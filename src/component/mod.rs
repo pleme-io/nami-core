@@ -18,9 +18,17 @@
 //!   CHILD    := tree
 //!             | STRING      -- literal text
 //!             | (@ NAME)    -- prop reference (expands to the prop value)
+//!             | (: EXPR)    -- eval EXPR via tatara-eval; stringify result
 //!   KV       := :ATTR VALUE   -- attribute
 //!   VALUE    := STRING
 //!             | (@ NAME)    -- dynamic attribute value
+//!             | (: EXPR)    -- dynamic attribute value via eval
+//!
+//! `(: EXPR)` requires the `eval` feature. EXPR is any tatara-eval
+//! expression — arithmetic, `(if)`, `(let)`, `(lambda)`, closures,
+//! `string-append`, comparisons. All declared props become bound
+//! symbols in the evaluator env, so `(if (> count 0) "some" "none")`
+//! works with `count` coming from the prop map.
 //!
 //! Expansion: `expand(spec, props)` → `Vec<Node>`. Rendered nodes
 //! land in nami-core's canonical `Node` shape, which means they
@@ -132,6 +140,11 @@ enum TemplateNode {
     },
     LiteralText(String),
     PropRef(String),
+    /// `(: <expr>)` — eval <expr> via the evaluator and interpolate
+    /// the result as a text node. Stored as the raw source of the
+    /// inner expression so we can pass it to `eval_source` directly.
+    /// Errors at expand time when the `eval` feature is off.
+    EvalText(String),
 }
 
 /// Either a literal string or a prop reference (for attribute values).
@@ -139,6 +152,9 @@ enum TemplateNode {
 enum Value_ {
     Literal(String),
     PropRef(String),
+    /// `:attr (: <expr>)` — eval <expr> and use its stringified value
+    /// as the attribute value.
+    Eval(String),
 }
 
 impl Template {
@@ -189,6 +205,7 @@ fn expand_node(tn: &TemplateNode, props: &Value) -> Result<Vec<Node>, String> {
                     Value_::Literal(s) => s.clone(),
                     Value_::PropRef(name) => props_as_string(props, name)
                         .ok_or_else(|| format!("missing prop: {name}"))?,
+                    Value_::Eval(src) => eval_to_string(src, props)?,
                 };
                 attributes.push((k.clone(), resolved));
             }
@@ -216,7 +233,30 @@ fn expand_node(tn: &TemplateNode, props: &Value) -> Result<Vec<Node>, String> {
                 children: vec![],
             }])
         }
+        TemplateNode::EvalText(src) => {
+            let s = eval_to_string(src, props)?;
+            Ok(vec![Node {
+                data: NodeData::Text(s),
+                children: vec![],
+            }])
+        }
     }
+}
+
+/// Evaluate a template sub-expression against the prop map and
+/// stringify the result. Requires the `eval` feature; returns a
+/// helpful error when the feature is off.
+#[cfg(feature = "eval")]
+fn eval_to_string(src: &str, props: &Value) -> Result<String, String> {
+    let evaluator = crate::eval::NamiEvaluator::new();
+    evaluator
+        .eval_string(src, props)
+        .map_err(|e| format!("eval '{src}': {e}"))
+}
+
+#[cfg(not(feature = "eval"))]
+fn eval_to_string(_src: &str, _props: &Value) -> Result<String, String> {
+    Err("templates with (: expr) require the 'eval' feature".into())
 }
 
 fn props_get<'a>(props: &'a Value, name: &str) -> Option<&'a Value> {
@@ -311,6 +351,21 @@ impl<'a> Reader<'a> {
             }
             return Ok(TemplateNode::PropRef(ident));
         }
+        // Special form: (: <lisp-expr>) — evaluate via tatara-eval.
+        if self.peek() == Some(':') {
+            self.next(); // consume ':'
+            self.skip_ws();
+            let expr = self.read_balanced_expr()?;
+            self.skip_ws();
+            if self.next() != Some(')') {
+                return Err("(: …) expected ')'".into());
+            }
+            let trimmed = expr.trim().to_owned();
+            if trimmed.is_empty() {
+                return Err("(: …) body cannot be empty".into());
+            }
+            return Ok(TemplateNode::EvalText(trimmed));
+        }
 
         // Otherwise a tag form: (tag [kv…] [child…])
         let tag = self.read_ident();
@@ -361,28 +416,99 @@ impl<'a> Reader<'a> {
         match self.peek() {
             Some('"') => Ok(Value_::Literal(self.read_string()?)),
             Some('(') => {
-                // Must be a (@ prop) prop-ref.
+                // Either (@ prop) or (: expr).
                 self.next();
                 self.skip_ws();
-                if self.peek() != Some('@') {
-                    return Err("attribute value list must be (@ prop-name)".into());
+                match self.peek() {
+                    Some('@') => {
+                        self.next();
+                        self.skip_ws();
+                        let ident = self.read_ident();
+                        if ident.is_empty() {
+                            return Err("(@ …) missing prop name".into());
+                        }
+                        self.skip_ws();
+                        if self.next() != Some(')') {
+                            return Err("(@ …) expected ')'".into());
+                        }
+                        Ok(Value_::PropRef(ident))
+                    }
+                    Some(':') => {
+                        self.next();
+                        self.skip_ws();
+                        let expr = self.read_balanced_expr()?;
+                        self.skip_ws();
+                        if self.next() != Some(')') {
+                            return Err("(: …) expected ')'".into());
+                        }
+                        let trimmed = expr.trim().to_owned();
+                        if trimmed.is_empty() {
+                            return Err("(: …) body cannot be empty".into());
+                        }
+                        Ok(Value_::Eval(trimmed))
+                    }
+                    _ => Err("attribute value list must be (@ prop) or (: expr)".into()),
                 }
-                self.next();
-                self.skip_ws();
-                let ident = self.read_ident();
-                if ident.is_empty() {
-                    return Err("(@ …) missing prop name".into());
-                }
-                self.skip_ws();
-                if self.next() != Some(')') {
-                    return Err("(@ …) expected ')'".into());
-                }
-                Ok(Value_::PropRef(ident))
             }
             Some(c) => Err(format!(
-                "expected string or (@ …) for attr value, got {c:?}"
+                "expected string, (@ prop), or (: expr) for attr value, got {c:?}"
             )),
             None => Err("EOF while reading attribute value".into()),
+        }
+    }
+
+    /// Read the body of a `(: …)` form — raw characters until the
+    /// matching `)` of the outer construct. Respects nested parens
+    /// and string literals. Stops WITHOUT consuming the terminator
+    /// so the caller can finalise the form.
+    fn read_balanced_expr(&mut self) -> Result<String, String> {
+        let mut out = String::new();
+        let mut depth: i32 = 0;
+        let mut in_str = false;
+        let mut escape = false;
+        loop {
+            let c = self
+                .peek()
+                .ok_or_else(|| "unterminated (: …)".to_string())?;
+            if in_str {
+                out.push(c);
+                self.next();
+                if escape {
+                    escape = false;
+                    continue;
+                }
+                if c == '\\' {
+                    escape = true;
+                    continue;
+                }
+                if c == '"' {
+                    in_str = false;
+                }
+                continue;
+            }
+            if c == '"' {
+                out.push(c);
+                self.next();
+                in_str = true;
+                continue;
+            }
+            if c == '(' {
+                depth += 1;
+                out.push(c);
+                self.next();
+                continue;
+            }
+            if c == ')' {
+                if depth == 0 {
+                    return Ok(out);
+                }
+                depth -= 1;
+                out.push(c);
+                self.next();
+                continue;
+            }
+            out.push(c);
+            self.next();
         }
     }
 
@@ -584,6 +710,91 @@ mod tests {
         let t = Template::parse(src).unwrap();
         let nodes = t.expand(&[], &json!({})).unwrap();
         assert_eq!(nodes[0].as_element().unwrap().tag, "div");
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_for_arithmetic_in_child_position() {
+        let s = spec("Count", &["n"], r#"(p "total=" (: (* n 2)))"#);
+        let nodes = expand(&s, &json!({"n": 21})).unwrap();
+        // p child[0] = "total=", child[1] = "42"
+        assert_eq!(nodes[0].children.len(), 2);
+        assert!(matches!(&nodes[0].children[0].data, NodeData::Text(t) if t == "total="));
+        assert!(matches!(&nodes[0].children[1].data, NodeData::Text(t) if t == "42"));
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_for_conditional_text() {
+        let s = spec(
+            "Verdict",
+            &["count"],
+            r#"(span (: (if (> count 0) "some" "none")))"#,
+        );
+        let some = expand(&s, &json!({"count": 5})).unwrap();
+        let none = expand(&s, &json!({"count": 0})).unwrap();
+        assert!(matches!(&some[0].children[0].data, NodeData::Text(t) if t == "some"));
+        assert!(matches!(&none[0].children[0].data, NodeData::Text(t) if t == "none"));
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_for_dynamic_attribute_value() {
+        let s = spec(
+            "Img",
+            &["size"],
+            r#"(img :src (: (if (> size 100) "big.png" "small.png")) :alt "dynamic")"#,
+        );
+        let big = expand(&s, &json!({"size": 200})).unwrap();
+        let small = expand(&s, &json!({"size": 50})).unwrap();
+        assert_eq!(
+            big[0].as_element().unwrap().get_attribute("src"),
+            Some("big.png")
+        );
+        assert_eq!(
+            small[0].as_element().unwrap().get_attribute("src"),
+            Some("small.png")
+        );
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_supports_let_and_lambda() {
+        let s = spec(
+            "Triple",
+            &["n"],
+            r#"(p "triple=" (: (let ((f (lambda (x) (* x 3)))) (f n))))"#,
+        );
+        let nodes = expand(&s, &json!({"n": 4})).unwrap();
+        assert!(matches!(&nodes[0].children[1].data, NodeData::Text(t) if t == "12"));
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_string_append() {
+        let s = spec(
+            "Greet",
+            &["name", "punct"],
+            r#"(h1 (: (string-append "Hello, " name punct)))"#,
+        );
+        let nodes = expand(&s, &json!({"name": "world", "punct": "!"})).unwrap();
+        assert!(matches!(&nodes[0].children[0].data, NodeData::Text(t) if t == "Hello, world!"));
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_empty_body_errors() {
+        assert!(Template::parse(r#"(p (: ))"#).is_err());
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn eval_escape_nested_parens() {
+        // Make sure the balanced reader doesn't terminate prematurely.
+        let s = spec("X", &["n"], r#"(p (: (+ (* n 2) (- n 1))))"#);
+        let nodes = expand(&s, &json!({"n": 5})).unwrap();
+        // (* 5 2) = 10, (- 5 1) = 4, sum = 14
+        assert!(matches!(&nodes[0].children[0].data, NodeData::Text(t) if t == "14"));
     }
 
     #[cfg(feature = "lisp")]

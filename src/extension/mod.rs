@@ -41,6 +41,16 @@ use std::collections::HashSet;
 #[cfg(feature = "lisp")]
 use tatara_lisp::DeriveTataraDomain;
 
+pub mod signature;
+pub use signature::{
+    canonical_bytes, canonical_hash, SignatureBundle, SignedExtension, Trustdb,
+    VerificationError, VerificationStatus,
+};
+#[cfg(feature = "signatures")]
+pub use signature::{sign, signing_key_from_seed, verify};
+#[cfg(not(feature = "signatures"))]
+pub use signature::verify;
+
 /// WebExtensions-style permission grants. Each maps to capabilities
 /// the substrate enforces when the extension's rules fire.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]

@@ -25,6 +25,10 @@ ts = ["dep:tree-sitter", "dep:tree-sitter-typescript", "dep:tree-sitter-svelte-n
 # with capability-gated access. Foundation for Lisp-authored scrapers
 # that ship as .wasm. Heavier compile cost — opt-in.
 wasm = ["dep:wasmtime", "dep:wasmtime-wasi", "dep:wasi-common"]
+# Ed25519 signatures for (defextension) bundles — connects the
+# browser-extension store to pleme-io's sekiban/tameshi attestation
+# chain. Off by default because most runtime paths don't need it.
+signatures = ["dep:ed25519-dalek", "dep:base64"]
 
 [dependencies]
 html5ever = "0.29"
@@ -50,6 +54,10 @@ tree-sitter-svelte-next = { version = "0.1", optional = true }
 wasmtime = { version = "38", optional = true, default-features = false, features = ["cranelift"] }
 wasmtime-wasi = { version = "38", optional = true }
 wasi-common = { version = "38", optional = true }
+# Ed25519 signing — battle-tested, audited, no_std-compatible.
+ed25519-dalek = { version = "2", optional = true, default-features = false, features = ["std", "rand_core"] }
+# Base64 encoding for pubkeys + signatures in manifest form.
+base64 = { version = "0.22", optional = true }
 
 [dev-dependencies]
 # Property-based testing — fuzzes parsers + invariants across
@@ -57,6 +65,8 @@ wasi-common = { version = "38", optional = true }
 proptest = "1"
 # Microbenchmarks for storage + hot-path primitives.
 criterion = { version = "0.7", default-features = false, features = ["rayon"] }
+# RNG for generating test keypairs.
+rand = "0.8"
 
 [[bench]]
 name = "storage_kv"

@@ -196,6 +196,42 @@ impl AliasRegistry {
     pub fn expand(&self, selector: &str, detections: &[Detection]) -> String {
         expand_aliases(selector, self, detections)
     }
+
+    /// Return a copy of the transform specs with every `@alias` in
+    /// the selectors resolved against the given framework detections.
+    /// Non-alias selectors pass through byte-identical.
+    #[must_use]
+    pub fn expand_transforms(
+        &self,
+        specs: &[crate::transform::DomTransformSpec],
+        detections: &[Detection],
+    ) -> Vec<crate::transform::DomTransformSpec> {
+        specs
+            .iter()
+            .map(|s| {
+                let mut s = s.clone();
+                s.selector = self.expand(&s.selector, detections);
+                s
+            })
+            .collect()
+    }
+
+    /// Same idea for scrape specs.
+    #[must_use]
+    pub fn expand_scrapes(
+        &self,
+        specs: &[crate::scrape::ScrapeSpec],
+        detections: &[Detection],
+    ) -> Vec<crate::scrape::ScrapeSpec> {
+        specs
+            .iter()
+            .map(|s| {
+                let mut s = s.clone();
+                s.selector = self.expand(&s.selector, detections);
+                s
+            })
+            .collect()
+    }
 }
 
 /// Walk a selector string, substitute every `@ident` token with the

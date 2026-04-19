@@ -155,10 +155,18 @@ fn framework_matches(spec: &NormalizeSpec, detections: &[Detection]) -> bool {
     let Some(want) = spec.framework.as_deref() else {
         return true;
     };
-    let want = want.to_ascii_lowercase();
+    let want = want.trim().to_ascii_lowercase();
     detections.iter().any(|d| {
-        let name = format!("{:?}", d.framework).to_ascii_lowercase();
-        name == want || name.contains(&want)
+        // Accept any of: Debug enum name, Detection.name (canonical
+        // string like "shadcn/radix"), substring either way. Gives
+        // authors flexibility — `"shadcn"`, `"shadcn/radix"`, and
+        // `"ShadcnRadix"` all match.
+        let debug_name = format!("{:?}", d.framework).to_ascii_lowercase();
+        let canonical = d.name.to_ascii_lowercase();
+        debug_name == want
+            || debug_name.contains(&want)
+            || canonical == want
+            || canonical.contains(&want)
     })
 }
 
@@ -309,6 +317,117 @@ mod tests {
         // selector `article` no longer matches `n-article`.
         let second = apply(&mut doc, &reg, &no_detections());
         assert_eq!(second.applied(), 0);
+    }
+
+    #[test]
+    fn framework_match_accepts_canonical_slash_name() {
+        // Historically "shadcn/radix" was the user-facing name; the
+        // Debug enum is ShadcnRadix. Both spellings should gate
+        // rules correctly.
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "shadcn-card".into(),
+            framework: Some("shadcn/radix".into()),
+            selector: "[data-slot=card]".into(),
+            rename_to: "n-card".into(),
+            description: None,
+        });
+        reg.insert(NormalizeSpec {
+            name: "shadcn-alt".into(),
+            framework: Some("shadcn".into()),
+            selector: "[data-slot=tab]".into(),
+            rename_to: "n-tab".into(),
+            description: None,
+        });
+        let det = vec![Detection {
+            framework: crate::framework::Framework::ShadcnRadix,
+            name: "shadcn/radix",
+            confidence: 0.9,
+            evidence: vec![],
+        }];
+        let mut doc = Document::parse(
+            r#"<html><body>
+               <div data-slot="card">c</div>
+               <div data-slot="tab">t</div>
+            </body></html>"#,
+        );
+        let report = apply(&mut doc, &reg, &det);
+        // Both rules fire — canonical slash name AND substring match.
+        assert_eq!(report.applied(), 2);
+    }
+
+    #[test]
+    fn multiple_rules_fire_independently() {
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "a".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            description: None,
+        });
+        reg.insert(NormalizeSpec {
+            name: "b".into(),
+            framework: None,
+            selector: "nav".into(),
+            rename_to: "n-nav".into(),
+            description: None,
+        });
+        let mut doc = Document::parse(
+            "<html><body><article>x</article><nav>n</nav></body></html>",
+        );
+        let report = apply(&mut doc, &reg, &no_detections());
+        assert_eq!(report.applied(), 2);
+        // Both tags present in rewritten form.
+        let tags: Vec<String> = doc
+            .root
+            .descendants()
+            .filter_map(|n| n.as_element().map(|e| e.tag.clone()))
+            .collect();
+        assert!(tags.iter().any(|t| t == "n-article"));
+        assert!(tags.iter().any(|t| t == "n-nav"));
+    }
+
+    #[test]
+    fn provenance_attrs_stamped_on_every_hit() {
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "rule-x".into(),
+            framework: None,
+            selector: "section".into(),
+            rename_to: "n-section".into(),
+            description: None,
+        });
+        let mut doc = Document::parse(
+            "<html><body><section>a</section><section>b</section></body></html>",
+        );
+        apply(&mut doc, &reg, &no_detections());
+        let mut counted = 0;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "n-section" {
+                    assert_eq!(el.get_attribute("data-n-from"), Some("section"));
+                    assert_eq!(el.get_attribute("data-n-rule"), Some("rule-x"));
+                    counted += 1;
+                }
+            }
+        }
+        assert_eq!(counted, 2);
+    }
+
+    #[test]
+    fn empty_registry_is_noop() {
+        let reg = NormalizeRegistry::new();
+        let mut doc = Document::parse("<html><body><article>x</article></body></html>");
+        let report = apply(&mut doc, &reg, &no_detections());
+        assert_eq!(report.applied(), 0);
+        // Original <article> intact.
+        let tags: Vec<String> = doc
+            .root
+            .descendants()
+            .filter_map(|n| n.as_element().map(|e| e.tag.clone()))
+            .collect();
+        assert!(tags.iter().any(|t| t == "article"));
     }
 
     #[cfg(feature = "lisp")]

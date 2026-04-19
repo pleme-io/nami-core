@@ -25,6 +25,8 @@ pub mod effect;
 #[cfg(feature = "eval")]
 pub mod eval;
 pub mod framework;
+#[cfg(feature = "eval")]
+pub mod inline_lisp;
 pub mod layout;
 pub mod lisp;
 pub mod net;

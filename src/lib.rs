@@ -13,6 +13,7 @@
 //! - **Transform**: Lisp-programmable DOM mutations (requires `lisp` feature;
 //!   the engine and spec types are always available, the Lisp front-end is opt-in)
 
+pub mod accessibility;
 pub mod agent;
 pub mod alias;
 #[cfg(feature = "ts")]

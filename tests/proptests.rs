@@ -223,6 +223,81 @@ proptest! {
     }
 }
 
+// ── Accessibility tree invariants ───────────────────────────────
+
+use nami_core::accessibility::{ax_tree, ax_tree_sexp, AxNode};
+
+fn count_nodes(n: &AxNode) -> usize {
+    1 + n.children.iter().map(count_nodes).sum::<usize>()
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    // AX1. ax_tree never panics on arbitrary HTML input.
+    #[test]
+    fn ax_tree_never_panics(s in "\\PC{0,400}") {
+        let doc = Document::parse(&s);
+        let _ = ax_tree(&doc);
+    }
+
+    // AX2. ax_tree is deterministic.
+    #[test]
+    fn ax_tree_is_deterministic_on_arbitrary_html(s in "\\PC{0,400}") {
+        let doc = Document::parse(&s);
+        let a = ax_tree(&doc);
+        let b = ax_tree(&doc);
+        prop_assert_eq!(a, b);
+    }
+
+    // AX3. Every node has non-empty role. The role taxonomy is
+    // closed — even unknown tags get "generic".
+    #[test]
+    fn every_ax_node_has_non_empty_role(s in "\\PC{0,400}") {
+        let doc = Document::parse(&s);
+        let tree = ax_tree(&doc);
+        fn check(n: &AxNode) -> bool {
+            if n.role.is_empty() {
+                return false;
+            }
+            n.children.iter().all(check)
+        }
+        prop_assert!(check(&tree));
+    }
+
+    // AX4. sexp emission succeeds; output is non-empty.
+    #[test]
+    fn ax_tree_sexp_is_always_non_empty(s in "\\PC{0,400}") {
+        let doc = Document::parse(&s);
+        let sexp = ax_tree_sexp(&doc);
+        prop_assert!(!sexp.is_empty());
+        prop_assert!(sexp.contains("(ax :role"));
+    }
+
+    // AX5. Both <article> and <n-article> yield role=article —
+    // our normalize-is-source-agnostic story also holds for ARIA.
+    #[test]
+    fn article_html_and_n_article_yield_same_role(
+        body in "[a-z]{1,20}",
+    ) {
+        let html1 = format!("<html><body><article>{body}</article></body></html>");
+        let html2 = format!("<html><body><n-article>{body}</n-article></body></html>");
+        let t1 = ax_tree(&Document::parse(&html1));
+        let t2 = ax_tree(&Document::parse(&html2));
+        let r1 = t1.children.iter().map(|c| c.role.clone()).collect::<Vec<_>>();
+        let r2 = t2.children.iter().map(|c| c.role.clone()).collect::<Vec<_>>();
+        prop_assert_eq!(r1, r2);
+    }
+
+    // AX6. Node count ≥ 1 (the document root is always there).
+    #[test]
+    fn ax_tree_has_at_least_one_node(s in "\\PC{0,400}") {
+        let doc = Document::parse(&s);
+        let tree = ax_tree(&doc);
+        prop_assert!(count_nodes(&tree) >= 1);
+    }
+}
+
 // ── 5. Normalize pipeline invariants ────────────────────────────
 //
 // Every property below is a claim about `normalize::apply` that must

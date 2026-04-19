@@ -41,6 +41,13 @@
 //! | attestation          | `provenance_attrs`   |
 //! | version              | `version`            |
 //! | content hash         | `typescape_hash()`   |
+//!
+//! Derived surfaces (not dimensions in their own right, but
+//! introspectable):
+//!
+//! * `accessibility::ax_tree(&doc)` — the canonical `n-*`
+//!   vocabulary doubles as the ARIA role map; every normalize pack
+//!   implicitly gives its framework free a11y coverage.
 
 use serde::{Deserialize, Serialize};
 

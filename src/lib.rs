@@ -19,6 +19,7 @@ pub mod css;
 pub mod dom;
 pub mod layout;
 pub mod net;
+pub mod scrape;
 pub mod selector;
 pub mod storage;
 pub mod transform;

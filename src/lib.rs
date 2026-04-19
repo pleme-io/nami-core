@@ -20,6 +20,7 @@ pub mod config;
 pub mod content;
 pub mod css;
 pub mod dom;
+pub mod effect;
 #[cfg(feature = "eval")]
 pub mod eval;
 pub mod framework;
@@ -33,4 +34,5 @@ pub mod selector;
 pub mod shadow;
 pub mod state;
 pub mod storage;
+pub mod store;
 pub mod transform;

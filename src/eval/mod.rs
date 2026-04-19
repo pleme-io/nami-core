@@ -122,6 +122,12 @@ impl Default for NamiEvaluator {
     }
 }
 
+/// Public conversion — used by sibling modules (`store`) that bind
+/// JSON into the evaluator too.
+pub fn json_to_value_public(v: &JsonValue) -> Value {
+    json_to_value(v)
+}
+
 /// Convert a serde JSON value into a tatara-eval [`Value`]. Nested
 /// objects become `Attrs` (BTreeMap<String, Value>).
 fn json_to_value(v: &JsonValue) -> Value {

@@ -194,9 +194,7 @@ impl Node {
 
     /// Iterate over all descendant nodes in depth-first order.
     pub fn descendants(&self) -> DescendantIter<'_> {
-        DescendantIter {
-            stack: vec![self],
-        }
+        DescendantIter { stack: vec![self] }
     }
 }
 

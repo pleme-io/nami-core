@@ -62,15 +62,14 @@ impl BrowserConfig {
     ///
     /// Returns an error if the YAML is malformed.
     pub fn from_yaml(yaml: &str) -> Result<Self, ConfigError> {
-        serde_json::from_str(yaml)
-            .or_else(|_| {
-                // Try as JSON first (serde_json), fall back to treating it as
-                // a simple key-value format. For full YAML support, consumers
-                // should use serde_yaml or shikumi.
-                Err(ConfigError::ParseError(
-                    "YAML parsing requires serde_yaml or the `config` feature with shikumi".to_string(),
-                ))
-            })
+        serde_json::from_str(yaml).or_else(|_| {
+            // Try as JSON first (serde_json), fall back to treating it as
+            // a simple key-value format. For full YAML support, consumers
+            // should use serde_yaml or shikumi.
+            Err(ConfigError::ParseError(
+                "YAML parsing requires serde_yaml or the `config` feature with shikumi".to_string(),
+            ))
+        })
     }
 
     /// Load configuration from a JSON string.
@@ -259,7 +258,10 @@ mod tests {
         let json = r#"{"homepage": "https://example.com", "search_engine": "https://google.com/search?q={}"}"#;
         let config = BrowserConfig::from_json(json).unwrap();
         assert_eq!(config.homepage, "https://example.com");
-        assert_eq!(config.search_url("test"), "https://google.com/search?q=test");
+        assert_eq!(
+            config.search_url("test"),
+            "https://google.com/search?q=test"
+        );
     }
 
     #[test]

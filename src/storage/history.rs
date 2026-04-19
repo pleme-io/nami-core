@@ -275,10 +275,7 @@ mod tests {
 
         assert_eq!(store.len(), 2);
         assert!(store.get("https://example.com").is_some());
-        assert_eq!(
-            store.get("https://example.com").unwrap().visit_count,
-            1
-        );
+        assert_eq!(store.get("https://example.com").unwrap().visit_count, 1);
     }
 
     #[test]

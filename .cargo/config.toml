@@ -1,0 +1,4 @@
+# Delegate git fetches to the system git CLI so SSH keys work for
+# private pleme-io deps (e.g. tatara-lisp).
+[net]
+git-fetch-with-cli = true

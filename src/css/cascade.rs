@@ -2,9 +2,9 @@
 
 use std::collections::HashMap;
 
-use lightningcss::stylesheet::{ParserOptions, StyleSheet as LcssStyleSheet};
-use lightningcss::rules::CssRule;
 use lightningcss::properties::Property;
+use lightningcss::rules::CssRule;
+use lightningcss::stylesheet::{ParserOptions, StyleSheet as LcssStyleSheet};
 use lightningcss::values::color::CssColor;
 use tracing::debug;
 
@@ -194,9 +194,7 @@ impl StyleResolver {
     /// Create a new resolver with no stylesheets.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            sheets: Vec::new(),
-        }
+        Self { sheets: Vec::new() }
     }
 
     /// Add a stylesheet to the resolver.
@@ -278,10 +276,31 @@ impl Default for StyleResolver {
 fn is_block_element(tag: &str) -> bool {
     matches!(
         tag,
-        "div" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
-            | "ul" | "ol" | "li" | "blockquote" | "pre" | "section"
-            | "article" | "header" | "footer" | "nav" | "main" | "form"
-            | "table" | "figure" | "figcaption" | "details" | "summary"
+        "div"
+            | "p"
+            | "h1"
+            | "h2"
+            | "h3"
+            | "h4"
+            | "h5"
+            | "h6"
+            | "ul"
+            | "ol"
+            | "li"
+            | "blockquote"
+            | "pre"
+            | "section"
+            | "article"
+            | "header"
+            | "footer"
+            | "nav"
+            | "main"
+            | "form"
+            | "table"
+            | "figure"
+            | "figcaption"
+            | "details"
+            | "summary"
     )
 }
 
@@ -298,7 +317,11 @@ fn simple_selector_matches(selector_debug: &str, element: &crate::dom::ElementDa
 
 /// Count total descendants of a node (including the node itself).
 fn count_descendants(node: &Node) -> usize {
-    1 + node.children.iter().map(|c| count_descendants(c)).sum::<usize>()
+    1 + node
+        .children
+        .iter()
+        .map(|c| count_descendants(c))
+        .sum::<usize>()
 }
 
 #[cfg(test)]

@@ -246,7 +246,11 @@ impl BookmarkStore {
 
         let json = serde_json::to_string_pretty(&self.bookmarks)?;
         std::fs::write(&self.path, json)?;
-        debug!("saved {} bookmarks to {:?}", self.bookmarks.len(), self.path);
+        debug!(
+            "saved {} bookmarks to {:?}",
+            self.bookmarks.len(),
+            self.path
+        );
         Ok(())
     }
 }
@@ -289,12 +293,8 @@ mod tests {
         let mut store = BookmarkStore::in_memory();
         assert!(store.is_empty());
 
-        store
-            .add(Bookmark::new("https://a.com", "A"))
-            .unwrap();
-        store
-            .add(Bookmark::new("https://b.com", "B"))
-            .unwrap();
+        store.add(Bookmark::new("https://a.com", "A")).unwrap();
+        store.add(Bookmark::new("https://b.com", "B")).unwrap();
         assert_eq!(store.len(), 2);
 
         // Duplicate should fail.
@@ -379,9 +379,7 @@ mod tests {
     #[test]
     fn store_contains() {
         let mut store = BookmarkStore::in_memory();
-        store
-            .add(Bookmark::new("https://a.com", "A"))
-            .unwrap();
+        store.add(Bookmark::new("https://a.com", "A")).unwrap();
         assert!(store.contains("https://a.com"));
         assert!(!store.contains("https://b.com"));
     }

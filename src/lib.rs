@@ -10,6 +10,8 @@
 //! - **Content**: Ad/tracker blocking with filter lists
 //! - **Storage**: Bookmarks and browsing history
 //! - **Config**: Browser configuration (requires `config` feature)
+//! - **Transform**: Lisp-programmable DOM mutations (requires `lisp` feature;
+//!   the engine and spec types are always available, the Lisp front-end is opt-in)
 
 pub mod config;
 pub mod content;
@@ -18,3 +20,4 @@ pub mod dom;
 pub mod layout;
 pub mod net;
 pub mod storage;
+pub mod transform;

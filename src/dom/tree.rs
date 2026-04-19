@@ -2,7 +2,7 @@
 
 use html5ever::tendril::TendrilSink as _;
 use html5ever::tree_builder::TreeSink;
-use html5ever::{local_name, namespace_url, ns, parse_document, Attribute};
+use html5ever::{Attribute, local_name, namespace_url, ns, parse_document};
 use markup5ever::{ExpandedName, QualName};
 use std::borrow::Cow;
 use tracing::debug;
@@ -50,9 +50,7 @@ impl Document {
     #[must_use]
     pub fn query_selector(&self, selector: &str) -> Option<&Node> {
         let matcher = SimpleMatcher::parse(selector);
-        self.root
-            .descendants()
-            .find(|node| matcher.matches(node))
+        self.root.descendants().find(|node| matcher.matches(node))
     }
 
     /// Get all text content in the document, concatenated.
@@ -219,7 +217,12 @@ impl TreeSink for DomSink {
         }
     }
 
-    fn create_element(&self, name: QualName, attrs: Vec<Attribute>, _flags: html5ever::tree_builder::ElementFlags) -> Handle {
+    fn create_element(
+        &self,
+        name: QualName,
+        attrs: Vec<Attribute>,
+        _flags: html5ever::tree_builder::ElementFlags,
+    ) -> Handle {
         // We need &mut self but TreeSink gives us &self for create_element.
         // This is a known awkwardness with html5ever's API.
         // We'll use a workaround with interior mutability in a real impl,
@@ -247,7 +250,11 @@ impl TreeSink for DomSink {
         this.alloc_node(NodeData::Comment(text.to_string()))
     }
 
-    fn create_pi(&self, _target: html5ever::tendril::StrTendril, _data: html5ever::tendril::StrTendril) -> Handle {
+    fn create_pi(
+        &self,
+        _target: html5ever::tendril::StrTendril,
+        _data: html5ever::tendril::StrTendril,
+    ) -> Handle {
         #[expect(invalid_reference_casting)]
         let this = unsafe { &mut *(std::ptr::from_ref(self) as *mut Self) };
         this.alloc_node(NodeData::Comment(String::new()))
@@ -305,7 +312,11 @@ impl TreeSink for DomSink {
         // Not tracked in this implementation.
     }
 
-    fn append_before_sibling(&self, sibling: &Handle, child: html5ever::tree_builder::NodeOrText<Handle>) {
+    fn append_before_sibling(
+        &self,
+        sibling: &Handle,
+        child: html5ever::tree_builder::NodeOrText<Handle>,
+    ) {
         #[expect(invalid_reference_casting)]
         let this = unsafe { &mut *(std::ptr::from_ref(self) as *mut Self) };
 
@@ -372,10 +383,15 @@ mod tests {
 
     #[test]
     fn parse_simple_html() {
-        let doc = Document::parse("<html><head><title>Test</title></head><body><p>Hello</p></body></html>");
+        let doc = Document::parse(
+            "<html><head><title>Test</title></head><body><p>Hello</p></body></html>",
+        );
         assert!(doc.root.is_document() || doc.root.is_element());
         let text = doc.text_content();
-        assert!(text.contains("Hello"), "text_content should contain 'Hello', got: {text}");
+        assert!(
+            text.contains("Hello"),
+            "text_content should contain 'Hello', got: {text}"
+        );
     }
 
     #[test]
@@ -393,7 +409,8 @@ mod tests {
 
     #[test]
     fn query_selector_by_class() {
-        let doc = Document::parse(r#"<div><span class="highlight">yes</span><span>no</span></div>"#);
+        let doc =
+            Document::parse(r#"<div><span class="highlight">yes</span><span>no</span></div>"#);
         let highlighted = doc.query_selector_all(".highlight");
         assert_eq!(highlighted.len(), 1);
         assert_eq!(highlighted[0].text_content(), "yes");

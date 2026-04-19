@@ -197,6 +197,36 @@ fn evaluate_spec_inner(
     Ok(crate::eval::value_to_json(&raw))
 }
 
+/// Compute every derivation against the current store and bind each
+/// result as a read-only symbol in the evaluator's env.
+///
+/// The `(set-state …)` host function continues to write to the store
+/// only — derived values can't be "set", they recompute from state.
+///
+/// Derivations whose `compute` fails are skipped with a tracing warn
+/// rather than aborting the whole bind. That lets a user have a
+/// broken derivation in their config without bricking the rest of
+/// their effects.
+#[cfg(feature = "eval")]
+pub fn bind_into(
+    evaluator: &crate::eval::NamiEvaluator,
+    registry: &DerivedRegistry,
+    store: &crate::store::StateStore,
+) {
+    for spec in &registry.specs {
+        match registry.evaluate(&spec.name, store) {
+            Ok(value) => {
+                evaluator
+                    .interpreter()
+                    .define(&spec.name, crate::eval::json_to_value(&value));
+            }
+            Err(e) => {
+                tracing::warn!("derived '{}' compute failed: {e}", spec.name);
+            }
+        }
+    }
+}
+
 /// Compile a Lisp document of `(defderived …)` forms.
 #[cfg(feature = "lisp")]
 pub fn compile(src: &str) -> Result<Vec<DerivedSpec>, String> {

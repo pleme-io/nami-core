@@ -174,6 +174,60 @@ fn decide_one(
     }
 }
 
+/// Phase 2 variant: like [`apply`] but also binds every derived
+/// value into the evaluator env before each effect. Effect bodies
+/// can read derived names as symbols alongside state cells.
+#[cfg(feature = "eval")]
+pub fn apply_with_derived(
+    store: &StateStore,
+    derived: &crate::derived::DerivedRegistry,
+    decisions: &[EffectDecision],
+) -> Vec<EffectRunReport> {
+    use crate::eval::NamiEvaluator;
+    use serde_json::json;
+
+    let mut reports = Vec::with_capacity(decisions.len());
+    for d in decisions {
+        if !d.fired {
+            continue;
+        }
+        let Some(src) = d.run.as_ref() else {
+            continue;
+        };
+        let evaluator = NamiEvaluator::new();
+        crate::store::bind_into(&evaluator, store);
+        crate::derived::bind_into(&evaluator, derived, store);
+        match evaluator.eval(src, &json!({})) {
+            Ok(_) => reports.push(EffectRunReport {
+                effect: d.effect.clone(),
+                ok: true,
+                error: None,
+            }),
+            Err(e) => reports.push(EffectRunReport {
+                effect: d.effect.clone(),
+                ok: false,
+                error: Some(format!("{e}")),
+            }),
+        }
+    }
+    reports
+}
+
+/// Convenience variant: phase 1 + phase 2 for `"page-load"` with
+/// derived values bound into the effect evaluator.
+#[cfg(feature = "eval")]
+pub fn run_page_load_with_derived(
+    store: &StateStore,
+    effects: &EffectRegistry,
+    derived: &crate::derived::DerivedRegistry,
+    predicates: &PredicateRegistry,
+    cx: &EvalContext<'_>,
+) -> (Vec<EffectDecision>, Vec<EffectRunReport>) {
+    let decisions = decide(effects, "page-load", predicates, cx);
+    let reports = apply_with_derived(store, derived, &decisions);
+    (decisions, reports)
+}
+
 /// Phase 2: execute each fired decision's `run` expression against a
 /// shared evaluator bound to the state store. Requires the `eval`
 /// feature.
@@ -294,6 +348,54 @@ mod tests {
         let doc = Document::parse("<html><body><p>no article</p></body></html>");
         let decisions = decide(&reg, "page-load", &preds, &ctx(&doc));
         assert!(!decisions[0].fired);
+    }
+
+    #[cfg(feature = "eval")]
+    #[test]
+    fn effect_can_read_derived_value() {
+        use crate::derived::{DerivedRegistry, DerivedSpec};
+
+        let store = StateStore::from_specs(&[
+            StateSpec {
+                name: "price".into(),
+                initial: json!(10),
+                description: None,
+                persistent: false,
+            },
+            StateSpec {
+                name: "quantity".into(),
+                initial: json!(3),
+                description: None,
+                persistent: false,
+            },
+            StateSpec {
+                name: "last-total".into(),
+                initial: json!(0),
+                description: None,
+                persistent: false,
+            },
+        ]);
+        let mut derived = DerivedRegistry::new();
+        derived.insert(DerivedSpec {
+            name: "subtotal".into(),
+            description: None,
+            inputs: vec!["price".into(), "quantity".into()],
+            compute: "(* price quantity)".into(),
+        });
+
+        // Effect reads the derived value and writes it to a cell.
+        let mut reg = EffectRegistry::new();
+        reg.insert(effect(
+            "snapshot-total",
+            "page-load",
+            None,
+            r#"(set-state "last-total" subtotal)"#,
+        ));
+        let preds = PredicateRegistry::new();
+        let doc = Document::parse("<html></html>");
+        let (_, reports) = run_page_load_with_derived(&store, &reg, &derived, &preds, &ctx(&doc));
+        assert!(reports[0].ok);
+        assert_eq!(store.get("last-total"), Some(json!(30)));
     }
 
     #[cfg(feature = "eval")]

@@ -46,6 +46,7 @@ pub mod query;
 pub mod reader;
 pub mod route;
 pub mod scrape;
+pub mod security_policy;
 pub mod selector;
 pub mod shadow;
 pub mod state;

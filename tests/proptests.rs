@@ -205,6 +205,29 @@ fn arb_tag() -> impl Strategy<Value = String> {
     ]
 }
 
+/// Like `arb_tag` but tighter — includes only tags html5ever leaves
+/// alone inside `<body>`. Excludes table-cell / form-child / list-
+/// item tags that the HTML5 parser implicitly relocates or wraps.
+///
+/// Source-agnostic tests need this because JSX, being a pure AST
+/// grammar, has no equivalent relocation — a bare `<td>` in JSX
+/// stays a `<td>`, while the same in HTML gets hoisted outside
+/// `<body>` by the tree builder.
+fn arb_semantic_tag() -> impl Strategy<Value = String> {
+    prop_oneof![
+        Just("article".to_owned()),
+        Just("nav".to_owned()),
+        Just("section".to_owned()),
+        Just("main".to_owned()),
+        Just("aside".to_owned()),
+        Just("div".to_owned()),
+        Just("p".to_owned()),
+        Just("span".to_owned()),
+        Just("header".to_owned()),
+        Just("footer".to_owned()),
+    ]
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
@@ -440,7 +463,7 @@ proptest! {
     #[cfg(feature = "ts")]
     #[test]
     fn normalize_is_source_agnostic_across_html_and_jsx(
-        tag in "[a-z]{2,6}",
+        tag in arb_semantic_tag(),
     ) {
         use nami_core::normalize::{apply, NormalizeRegistry, NormalizeSpec};
         let mut reg = NormalizeRegistry::new();
@@ -471,7 +494,7 @@ proptest! {
     #[cfg(feature = "ts")]
     #[test]
     fn normalize_is_source_agnostic_across_html_and_svelte(
-        tag in "[a-z]{2,6}",
+        tag in arb_semantic_tag(),
     ) {
         use nami_core::normalize::{apply, NormalizeRegistry, NormalizeSpec};
         let mut reg = NormalizeRegistry::new();

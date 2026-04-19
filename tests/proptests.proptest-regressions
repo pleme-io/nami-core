@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 5711b4d58232adc2e2d2c94f5b3f7bed1a6a52812ebb356e61196577fbb2e64b # shrinks to s = "\"\"0ꭰ0(\u{591}\"AAぁ\"  0AA\u{1e01b}0<ຆ<\""
+cc 2bb76b4898b9cfca58d39efa50011feb172de811629cdc77e85bc913ce3c7e69 # shrinks to tag = "td"

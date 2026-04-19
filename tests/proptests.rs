@@ -154,6 +154,75 @@ proptest! {
     }
 }
 
+// ── CSS ↔ Lisp roundtrip invariants ─────────────────────────────
+
+use nami_core::css_ast::{css_to_sexp, emit_css, parse_css, sexp_to_css, CssRule};
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    // CSS1. parse_css never panics on arbitrary text input.
+    #[test]
+    fn css_parser_never_panics(s in "\\PC{0,300}") {
+        let _ = parse_css(&s);
+    }
+
+    // CSS2. emit_css is deterministic.
+    #[test]
+    fn css_emit_is_deterministic(
+        sel in "[a-z][a-z0-9_-]{0,6}",
+        prop in "[a-z][a-z0-9-]{0,12}",
+        val in "[a-z0-9 #%.-]{1,20}",
+    ) {
+        let rules = vec![CssRule {
+            selector: sel.clone(),
+            declarations: vec![(prop.clone(), val.clone())],
+        }];
+        prop_assert_eq!(emit_css(&rules), emit_css(&rules));
+    }
+
+    // CSS3. emit → parse → emit is a fixed point (structure preserved
+    // after one normalization step). Values must start with a non-
+    // space character — whitespace-only values aren't valid CSS and
+    // our parser legitimately drops them.
+    #[test]
+    fn css_emit_parse_emit_is_fixed_point(
+        sel in "[a-z][a-z0-9_-]{0,6}",
+        prop in "[a-z][a-z0-9-]{0,12}",
+        val in "[a-z0-9][a-z0-9 ]{0,19}",
+    ) {
+        let rules = vec![CssRule {
+            selector: sel,
+            declarations: vec![(prop, val.trim_end().to_owned())],
+        }];
+        let once  = emit_css(&rules);
+        let twice = emit_css(&parse_css(&once));
+        prop_assert_eq!(once, twice);
+    }
+
+    // CSS4. sexp roundtrip is lossless for any well-formed rules.
+    // The sexp parser preserves byte-exact strings, so this doesn't
+    // need the emit_css trimming the other test does.
+    #[test]
+    fn css_sexp_roundtrip_is_lossless(
+        sel in "[a-z][a-z0-9_. -]{0,15}",
+        prop in "[a-z][a-z0-9-]{0,12}",
+        val in "[a-z0-9][a-z0-9 #%.-]{0,19}",
+    ) {
+        let rules_1 = vec![CssRule {
+            selector: sel.trim().to_owned(),
+            declarations: vec![(prop, val)],
+        }];
+        if rules_1[0].selector.is_empty() {
+            return Ok(()); // empty selectors drop on reparse
+        }
+        let sexp = css_to_sexp(&rules_1);
+        let rules_2 = sexp_to_css(&sexp)
+            .map_err(|e| TestCaseError::fail(format!("sexp_to_css: {e}")))?;
+        prop_assert_eq!(rules_1, rules_2);
+    }
+}
+
 // ── 5. Normalize pipeline invariants ────────────────────────────
 //
 // Every property below is a claim about `normalize::apply` that must

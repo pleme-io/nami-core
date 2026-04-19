@@ -21,6 +21,7 @@ pub mod component;
 pub mod config;
 pub mod content;
 pub mod css;
+pub mod css_ast;
 pub mod derived;
 pub mod dom;
 pub mod effect;

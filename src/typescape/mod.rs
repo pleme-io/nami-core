@@ -358,6 +358,13 @@ fn ast_domains() -> Vec<AstDomain> {
             description: s("Svelte templates; element→element, attribute→attr, interpolations preserved as text."),
             requires_feature: opt_s("ts"),
         },
+        AstDomain {
+            name: s("css"),
+            parser: s("hand-rolled css_ast tokenizer"),
+            produces: s("Vec<css_ast::CssRule> ⇌ (css-stylesheet (css-rule …)) sexp"),
+            description: s("Vanilla CSS — top-level style rules only in V1. Bidirectional: parse_css / emit_css / css_to_sexp / sexp_to_css form a fixed point."),
+            requires_feature: None,
+        },
     ]
 }
 
@@ -488,10 +495,11 @@ mod tests {
     fn typescape_enumerates_every_shipped_ast_domain() {
         let ts = typescape();
         let names: Vec<&str> = ts.ast_domains.iter().map(|d| d.name.as_str()).collect();
-        // html is always there; jsx + svelte require `ts`.
+        // html + css are always there; jsx + svelte require `ts`.
         assert!(names.contains(&"html"));
         assert!(names.contains(&"jsx"));
         assert!(names.contains(&"svelte"));
+        assert!(names.contains(&"css"));
     }
 
     #[test]
@@ -591,7 +599,7 @@ mod tests {
         // also updating the `dsls: N` line here, which catches drift.
         assert!(yaml.contains("dsls:        14"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
-        assert!(yaml.contains("domains:     3"), "yaml: {yaml}");
+        assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.
         assert!(yaml.contains("host_apis:   4"), "yaml: {yaml}");
     }

@@ -343,6 +343,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Content blocking rule — domain list for outbound fetches + CSS selectors for DOM strip. Absorbs uBlock/EasyList patterns into the substrate pipeline."),
         mk("defstorage", "storage::kv::StorageSpec",
            "Typed persistent key/value store with optional TTL. Pure tatara-lisp, append-only event log for persistence, BLAKE3-attestable. Covers cookies/session/user-prefs without FFI."),
+        mk("defreader", "reader::ReaderSpec",
+           "Readability-style simplified view — keep/strip selectors + paragraph-density fallback + title/byline extraction. Absorbs Firefox Reader View + Safari Reader into the substrate pattern."),
     ]
 }
 
@@ -484,8 +486,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            16,
-            "16 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            17,
+            "17 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -608,7 +610,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        16"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        17"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

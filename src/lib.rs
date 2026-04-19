@@ -39,6 +39,7 @@ pub mod normalize;
 pub mod plan;
 pub mod predicate;
 pub mod query;
+pub mod reader;
 pub mod route;
 pub mod scrape;
 pub mod selector;

@@ -339,6 +339,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Framework-gated DOM rewrites toward canonical n-* vocabulary. :set-attrs + :remove-attrs support bidirectional (fold/emit) flows."),
         mk("defwasm-agent", "wasm_agent::WasmAgentSpec",
            "Precompiled .wasm scraper declaration — trigger + fuel budget + path. Executes against a read-only DOM snapshot via WasmHost::run_agent."),
+        mk("defblocker", "blocker::BlockerSpec",
+           "Content blocking rule — domain list for outbound fetches + CSS selectors for DOM strip. Absorbs uBlock/EasyList patterns into the substrate pipeline."),
     ]
 }
 
@@ -480,8 +482,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            14,
-            "14 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            15,
+            "15 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -604,7 +606,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        14"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        15"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

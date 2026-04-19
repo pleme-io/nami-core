@@ -16,6 +16,7 @@
 pub mod accessibility;
 pub mod agent;
 pub mod alias;
+pub mod blocker;
 #[cfg(feature = "ts")]
 pub mod ast;
 pub mod component;

@@ -13,8 +13,9 @@
 
 use std::time::{Duration, Instant};
 use wasmtime::{Config, Engine, Linker, Module, Store, StoreLimits, StoreLimitsBuilder};
-use wasmtime_wasi::preview1::{self, WasiP1Ctx};
-use wasmtime_wasi::{WasiCtxBuilder, pipe::MemoryOutputPipe};
+use wasmtime_wasi::p1::{self as preview1, WasiP1Ctx};
+use wasmtime_wasi::p2::pipe::MemoryOutputPipe;
+use wasmtime_wasi::WasiCtxBuilder;
 
 /// Capability-gated execution policy.
 #[derive(Debug, Clone)]

@@ -143,6 +143,13 @@ fn tokenize(s: &str) -> Result<Vec<Token>, String> {
             continue;
         }
 
+        if c == '[' {
+            chars.next(); // consume '['
+            let part = parse_attr_selector(&mut chars)?;
+            current_compound.push(part);
+            continue;
+        }
+
         if is_ident_start(c) {
             let ident = read_ident(&mut chars);
             current_compound.push(SimplePart::Tag(ident));
@@ -157,6 +164,141 @@ fn tokenize(s: &str) -> Result<Vec<Token>, String> {
     }
 
     Ok(out)
+}
+
+/// Parse a `[name]`, `[name=value]`, `[name*=value]`, etc. clause.
+/// Called after `[` has been consumed. Consumes through the matching `]`.
+fn parse_attr_selector(
+    chars: &mut std::iter::Peekable<std::str::Chars>,
+) -> Result<SimplePart, String> {
+    // Skip leading whitespace.
+    while matches!(chars.peek(), Some(c) if c.is_whitespace()) {
+        chars.next();
+    }
+
+    let name = read_attr_name(chars);
+    if name.is_empty() {
+        return Err("'[' not followed by attribute name".into());
+    }
+
+    while matches!(chars.peek(), Some(c) if c.is_whitespace()) {
+        chars.next();
+    }
+
+    // [name] (no operator)
+    if chars.peek() == Some(&']') {
+        chars.next();
+        return Ok(SimplePart::AttrPresent(name));
+    }
+
+    // Operator: '=' | '*=' | '^=' | '$=' | '~='
+    let op = match chars.next() {
+        Some('=') => AttrOp::Equals,
+        Some('*') => {
+            if chars.next() != Some('=') {
+                return Err("expected '*=' in attribute selector".into());
+            }
+            AttrOp::Contains
+        }
+        Some('^') => {
+            if chars.next() != Some('=') {
+                return Err("expected '^=' in attribute selector".into());
+            }
+            AttrOp::StartsWith
+        }
+        Some('$') => {
+            if chars.next() != Some('=') {
+                return Err("expected '$=' in attribute selector".into());
+            }
+            AttrOp::EndsWith
+        }
+        Some('~') => {
+            if chars.next() != Some('=') {
+                return Err("expected '~=' in attribute selector".into());
+            }
+            AttrOp::IncludesWord
+        }
+        Some(c) => return Err(format!("unexpected character in attr selector: {c:?}")),
+        None => return Err("unterminated attribute selector".into()),
+    };
+
+    while matches!(chars.peek(), Some(c) if c.is_whitespace()) {
+        chars.next();
+    }
+
+    let value = read_attr_value(chars)?;
+
+    while matches!(chars.peek(), Some(c) if c.is_whitespace()) {
+        chars.next();
+    }
+
+    if chars.next() != Some(']') {
+        return Err("attribute selector missing closing ']'".into());
+    }
+
+    Ok(match op {
+        AttrOp::Equals => SimplePart::AttrEquals(name, value),
+        AttrOp::Contains => SimplePart::AttrContains(name, value),
+        AttrOp::StartsWith => SimplePart::AttrStartsWith(name, value),
+        AttrOp::EndsWith => SimplePart::AttrEndsWith(name, value),
+        AttrOp::IncludesWord => SimplePart::AttrIncludesWord(name, value),
+    })
+}
+
+enum AttrOp {
+    Equals,
+    Contains,
+    StartsWith,
+    EndsWith,
+    IncludesWord,
+}
+
+fn read_attr_name(chars: &mut std::iter::Peekable<std::str::Chars>) -> String {
+    let mut out = String::new();
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == ':' {
+            out.push(c);
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    out
+}
+
+/// Attribute values: either a bare identifier-ish token, or a quoted
+/// string (single or double). Escapes not supported (stay simple).
+fn read_attr_value(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<String, String> {
+    let Some(&first) = chars.peek() else {
+        return Err("attribute selector value expected".into());
+    };
+    if first == '"' || first == '\'' {
+        chars.next();
+        let quote = first;
+        let mut out = String::new();
+        loop {
+            match chars.next() {
+                Some(c) if c == quote => return Ok(out),
+                Some(c) => out.push(c),
+                None => return Err("unterminated quoted attr value".into()),
+            }
+        }
+    } else {
+        let mut out = String::new();
+        while let Some(&c) = chars.peek() {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/' || c == ':'
+            {
+                out.push(c);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        if out.is_empty() {
+            return Err("attribute value must be an identifier or quoted string".into());
+        }
+        Ok(out)
+    }
 }
 
 fn is_ident_start(c: char) -> bool {

@@ -52,17 +52,36 @@ pub enum SimplePart {
     Class(String),
     /// `#bar` — element has that id.
     Id(String),
+    /// `[attr]` — element has the attribute (any value).
+    AttrPresent(String),
+    /// `[attr=value]` — attribute has exactly that value.
+    AttrEquals(String, String),
+    /// `[attr*=value]` — attribute contains the substring.
+    AttrContains(String, String),
+    /// `[attr^=value]` — attribute starts with.
+    AttrStartsWith(String, String),
+    /// `[attr$=value]` — attribute ends with.
+    AttrEndsWith(String, String),
+    /// `[attr~=value]` — attribute is a whitespace-separated list
+    /// containing `value` as one of its tokens (classic CSS semantics;
+    /// overlaps with `.class` for `class~=`, provided for generality).
+    AttrIncludesWord(String, String),
 }
 
 /// What a DOM node must expose for selectors to match against it.
 ///
-/// Intentionally minimal: the three things CSS compounds ask for.
-/// Implemented by both `nami_core::dom::ElementData` and nami's
-/// `Element`.
+/// Covers CSS compound + attribute selector needs. Implemented by both
+/// `nami_core::dom::ElementData` and nami's `Element`.
 pub trait SelectorNode {
     fn tag(&self) -> &str;
     fn has_class(&self, class: &str) -> bool;
     fn id(&self) -> Option<&str>;
+    /// Look up an attribute by name. Default impl returns `None` so
+    /// existing implementations keep compiling — each impl should
+    /// override to expose `data-*`, `hx-*`, etc.
+    fn attr(&self, _name: &str) -> Option<&str> {
+        None
+    }
 }
 
 impl Selector {
@@ -118,6 +137,16 @@ impl SimplePart {
             Self::Tag(t) => node.tag().eq_ignore_ascii_case(t),
             Self::Class(c) => node.has_class(c),
             Self::Id(i) => node.id() == Some(i.as_str()),
+            Self::AttrPresent(name) => node.attr(name).is_some(),
+            Self::AttrEquals(name, v) => node.attr(name) == Some(v.as_str()),
+            Self::AttrContains(name, v) => node.attr(name).is_some_and(|a| a.contains(v.as_str())),
+            Self::AttrStartsWith(name, v) => {
+                node.attr(name).is_some_and(|a| a.starts_with(v.as_str()))
+            }
+            Self::AttrEndsWith(name, v) => node.attr(name).is_some_and(|a| a.ends_with(v.as_str())),
+            Self::AttrIncludesWord(name, v) => node
+                .attr(name)
+                .is_some_and(|a| a.split_whitespace().any(|w| w == v.as_str())),
         }
     }
 }
@@ -135,6 +164,10 @@ impl SelectorNode for crate::dom::ElementData {
 
     fn id(&self) -> Option<&str> {
         self.get_attribute("id")
+    }
+
+    fn attr(&self, name: &str) -> Option<&str> {
+        self.get_attribute(name)
     }
 }
 
@@ -267,5 +300,117 @@ mod tests {
                 .unwrap()
                 .matches(&[&n("x", &[], Some("bar"))])
         );
+    }
+
+    // ── attribute selector tests (AttrFake carries arbitrary attrs) ──
+
+    struct AttrFake<'a> {
+        tag: &'a str,
+        attrs: Vec<(&'a str, &'a str)>,
+    }
+
+    impl<'a> SelectorNode for AttrFake<'a> {
+        fn tag(&self) -> &str {
+            self.tag
+        }
+        fn has_class(&self, c: &str) -> bool {
+            self.attrs
+                .iter()
+                .find(|(k, _)| *k == "class")
+                .is_some_and(|(_, v)| v.split_whitespace().any(|w| w == c))
+        }
+        fn id(&self) -> Option<&str> {
+            self.attrs.iter().find(|(k, _)| *k == "id").map(|(_, v)| *v)
+        }
+        fn attr(&self, name: &str) -> Option<&str> {
+            self.attrs.iter().find(|(k, _)| *k == name).map(|(_, v)| *v)
+        }
+    }
+
+    fn a<'a>(tag: &'a str, attrs: &[(&'a str, &'a str)]) -> AttrFake<'a> {
+        AttrFake {
+            tag,
+            attrs: attrs.to_vec(),
+        }
+    }
+
+    #[test]
+    fn attr_present_matches_when_attribute_exists() {
+        let s = Selector::parse("[hx-get]").unwrap();
+        assert!(s.matches(&[&a("button", &[("hx-get", "/api")])]));
+        assert!(!s.matches(&[&a("button", &[("onclick", "x")])]));
+    }
+
+    #[test]
+    fn attr_equals_exact_value() {
+        let s = Selector::parse("[type=email]").unwrap();
+        assert!(s.matches(&[&a("input", &[("type", "email")])]));
+        assert!(!s.matches(&[&a("input", &[("type", "text")])]));
+    }
+
+    #[test]
+    fn attr_equals_quoted_value_with_spaces() {
+        let s = Selector::parse(r#"[aria-label="Main menu"]"#).unwrap();
+        assert!(s.matches(&[&a("nav", &[("aria-label", "Main menu")])]));
+        assert!(!s.matches(&[&a("nav", &[("aria-label", "main")])]));
+    }
+
+    #[test]
+    fn attr_contains_substring() {
+        let s = Selector::parse(r#"[class*="btn-primary"]"#).unwrap();
+        assert!(s.matches(&[&a("x", &[("class", "rounded btn-primary huge")])]));
+        assert!(!s.matches(&[&a("x", &[("class", "btn-secondary")])]));
+    }
+
+    #[test]
+    fn attr_starts_with_prefix() {
+        let s = Selector::parse(r#"[href^="https://"]"#).unwrap();
+        assert!(s.matches(&[&a("a", &[("href", "https://example.com")])]));
+        assert!(!s.matches(&[&a("a", &[("href", "http://example.com")])]));
+    }
+
+    #[test]
+    fn attr_ends_with_suffix() {
+        let s = Selector::parse(r#"[src$=".png"]"#).unwrap();
+        assert!(s.matches(&[&a("img", &[("src", "/x/y/hero.png")])]));
+        assert!(!s.matches(&[&a("img", &[("src", "hero.webp")])]));
+    }
+
+    #[test]
+    fn attr_includes_word_for_whitespace_lists() {
+        let s = Selector::parse(r#"[rel~="noopener"]"#).unwrap();
+        assert!(s.matches(&[&a("a", &[("rel", "noopener noreferrer")])]));
+        assert!(!s.matches(&[&a("a", &[("rel", "noopener-external")])]));
+    }
+
+    #[test]
+    fn attr_selector_combined_with_tag() {
+        let s = Selector::parse("button[hx-post]").unwrap();
+        assert!(s.matches(&[&a("button", &[("hx-post", "/x")])]));
+        assert!(!s.matches(&[&a("button", &[])]));
+        assert!(!s.matches(&[&a("a", &[("hx-post", "/x")])]));
+    }
+
+    #[test]
+    fn attr_selector_with_descendant() {
+        let s = Selector::parse("form input[type=email]").unwrap();
+        let form = a("form", &[]);
+        let email = a("input", &[("type", "email")]);
+        let text = a("input", &[("type", "text")]);
+        assert!(s.matches(&[&form, &email]));
+        assert!(!s.matches(&[&form, &text]));
+    }
+
+    #[test]
+    fn shadcn_data_slot_targeting() {
+        let s = Selector::parse(r#"[data-slot="card"]"#).unwrap();
+        assert!(s.matches(&[&a("div", &[("data-slot", "card")])]));
+        assert!(!s.matches(&[&a("div", &[("data-slot", "button")])]));
+    }
+
+    #[test]
+    fn data_testid_style_nextjs_targeting() {
+        let s = Selector::parse(r#"[data-testid="hero"]"#).unwrap();
+        assert!(s.matches(&[&a("section", &[("data-testid", "hero")])]));
     }
 }

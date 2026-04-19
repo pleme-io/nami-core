@@ -330,6 +330,8 @@ mod tests {
             selector: sel.into(),
             action,
             arg: None,
+            component: None,
+            props: Vec::new(),
             description: None,
         }
     }

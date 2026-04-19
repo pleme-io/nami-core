@@ -56,6 +56,19 @@ pub struct DomTransformSpec {
     /// `name=value` for `set-attr`, the new text for `set-text`).
     #[serde(default)]
     pub arg: Option<String>,
+    /// Optional name of a `(defcomponent …)` to expand. When set for
+    /// `insert-before` / `insert-after` / `replace-with` actions, the
+    /// component is rendered with [`Self::props`] and the resulting
+    /// HTML replaces any inline `:arg`. Resolved at substrate-load time
+    /// so the apply engine stays snippet-oriented.
+    #[serde(default)]
+    pub component: Option<String>,
+    /// Static prop pairs passed to [`Self::component`] at expansion
+    /// time. Declared as `:props (("title" "hi") ("n" "3"))` in Lisp.
+    /// Numeric strings parse as JSON numbers; everything else is a
+    /// string. Ignored when [`Self::component`] is unset.
+    #[serde(default)]
+    pub props: Vec<(String, String)>,
     #[serde(default)]
     pub description: Option<String>,
 }
@@ -102,6 +115,42 @@ type PathItem = OwnedContext;
 struct Compiled<'a> {
     spec: &'a DomTransformSpec,
     selector: Selector,
+}
+
+/// Walk a transform list and for each spec with `component: Some(_)`,
+/// expand the component via `components` and overwrite `arg` with the
+/// rendered HTML. Non-component specs pass through unchanged. Missing
+/// components are warned-and-dropped (the apply engine then sees an
+/// empty snippet, which matches our "tolerant, log and skip" posture
+/// everywhere else in the substrate).
+pub fn resolve_components(
+    specs: &[DomTransformSpec],
+    components: &crate::component::ComponentRegistry,
+) -> Vec<DomTransformSpec> {
+    specs
+        .iter()
+        .map(|spec| {
+            let Some(comp_name) = spec.component.as_deref() else {
+                return spec.clone();
+            };
+            match components.expand_to_html(comp_name, &spec.props) {
+                Ok(html) => DomTransformSpec {
+                    arg: Some(html),
+                    ..spec.clone()
+                },
+                Err(e) => {
+                    tracing::warn!(
+                        "transform '{}': component '{comp_name}' expansion failed: {e}",
+                        spec.name
+                    );
+                    DomTransformSpec {
+                        arg: Some(String::new()),
+                        ..spec.clone()
+                    }
+                }
+            }
+        })
+        .collect()
 }
 
 /// Apply a sequence of transforms to a document, in order.
@@ -433,6 +482,8 @@ mod tests {
             selector: sel.into(),
             action: act,
             arg: arg.map(str::to_owned),
+            component: None,
+            props: Vec::new(),
             description: None,
         }
     }
@@ -714,5 +765,66 @@ mod tests {
         assert_eq!(count_elements(&doc, "iframe"), 1);
         // The .ad div still exists, now empty.
         assert_eq!(count_elements(&doc, "div"), 1);
+    }
+
+    #[cfg(feature = "lisp")]
+    #[test]
+    fn resolve_components_fills_arg_with_rendered_html() {
+        use crate::component::ComponentSpec;
+
+        let mut registry = crate::component::ComponentRegistry::new();
+        registry.insert(ComponentSpec {
+            name: "Banner".into(),
+            description: None,
+            props: vec!["title".into()],
+            template: "(div :class \"banner\" (h2 (@ title)))".into(),
+        });
+
+        let specs = vec![DomTransformSpec {
+            name: "inject-banner".into(),
+            selector: "body".into(),
+            action: DomAction::InsertAfter,
+            arg: None,
+            component: Some("Banner".into()),
+            props: vec![("title".into(), "Reader Mode".into())],
+            description: None,
+        }];
+
+        let resolved = resolve_components(&specs, &registry);
+        assert_eq!(resolved.len(), 1);
+        let r = &resolved[0];
+        let html = r.arg.as_deref().unwrap();
+        assert!(html.contains("<div class=\"banner\">"), "html: {html}");
+        assert!(html.contains("<h2>Reader Mode</h2>"), "html: {html}");
+        // Non-arg fields preserved.
+        assert_eq!(r.component.as_deref(), Some("Banner"));
+        assert_eq!(r.action, DomAction::InsertAfter);
+    }
+
+    #[cfg(feature = "lisp")]
+    #[test]
+    fn resolve_components_passes_through_non_component_specs() {
+        let registry = crate::component::ComponentRegistry::new();
+        let original = vec![spec("hide-ads", ".ad", DomAction::Remove, None)];
+        let resolved = resolve_components(&original, &registry);
+        assert_eq!(resolved, original);
+    }
+
+    #[cfg(feature = "lisp")]
+    #[test]
+    fn resolve_components_tolerates_missing_component() {
+        let registry = crate::component::ComponentRegistry::new();
+        let specs = vec![DomTransformSpec {
+            name: "inject-missing".into(),
+            selector: "body".into(),
+            action: DomAction::InsertAfter,
+            arg: None,
+            component: Some("DoesNotExist".into()),
+            props: vec![],
+            description: None,
+        }];
+        let resolved = resolve_components(&specs, &registry);
+        // Warns + drops to empty arg; apply engine then produces 0 hits.
+        assert_eq!(resolved[0].arg.as_deref(), Some(""));
     }
 }

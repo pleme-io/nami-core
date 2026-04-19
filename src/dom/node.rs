@@ -196,6 +196,98 @@ impl Node {
     pub fn descendants(&self) -> DescendantIter<'_> {
         DescendantIter { stack: vec![self] }
     }
+
+    /// Serialize this node (and descendants) back to an HTML string.
+    ///
+    /// Void elements (`br`, `img`, `input`, …) emit as self-terminating
+    /// start tags with no children. Text is escaped; attribute values are
+    /// quoted with `"` and have `"` + `&` escaped. Document nodes emit
+    /// the concatenation of their children.
+    #[must_use]
+    pub fn to_html(&self) -> String {
+        let mut out = String::new();
+        write_html(self, &mut out);
+        out
+    }
+}
+
+fn write_html(node: &Node, out: &mut String) {
+    match &node.data {
+        NodeData::Document => {
+            for c in &node.children {
+                write_html(c, out);
+            }
+        }
+        NodeData::Text(t) => escape_text(t, out),
+        NodeData::Comment(c) => {
+            out.push_str("<!--");
+            out.push_str(c);
+            out.push_str("-->");
+        }
+        NodeData::Element(el) => {
+            out.push('<');
+            out.push_str(&el.tag);
+            for (k, v) in &el.attributes {
+                out.push(' ');
+                out.push_str(k);
+                out.push_str("=\"");
+                escape_attr(v, out);
+                out.push('"');
+            }
+            if is_void_tag(&el.tag) {
+                out.push_str(" />");
+                return;
+            }
+            out.push('>');
+            for c in &node.children {
+                write_html(c, out);
+            }
+            out.push_str("</");
+            out.push_str(&el.tag);
+            out.push('>');
+        }
+    }
+}
+
+fn escape_text(s: &str, out: &mut String) {
+    for ch in s.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            _ => out.push(ch),
+        }
+    }
+}
+
+fn escape_attr(s: &str, out: &mut String) {
+    for ch in s.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '"' => out.push_str("&quot;"),
+            _ => out.push(ch),
+        }
+    }
+}
+
+fn is_void_tag(tag: &str) -> bool {
+    matches!(
+        tag,
+        "area"
+            | "base"
+            | "br"
+            | "col"
+            | "embed"
+            | "hr"
+            | "img"
+            | "input"
+            | "link"
+            | "meta"
+            | "param"
+            | "source"
+            | "track"
+            | "wbr"
+    )
 }
 
 /// Depth-first iterator over all descendant nodes.
@@ -243,6 +335,39 @@ mod tests {
         span.append_child(Node::text("world!"));
         div.append_child(span);
         assert_eq!(div.text_content(), "Hello, world!");
+    }
+
+    #[test]
+    fn to_html_roundtrips_basic_shapes() {
+        let mut div = Node::element(ElementData::with_attributes(
+            "div",
+            vec![("class".into(), "card".into())],
+        ));
+        div.append_child(Node::text("Hello & \"world\" <x>"));
+        let mut br = Node::element(ElementData::new("br"));
+        br.children.clear();
+        div.append_child(br);
+        let html = div.to_html();
+        assert_eq!(
+            html,
+            "<div class=\"card\">Hello &amp; \"world\" &lt;x&gt;<br /></div>"
+        );
+    }
+
+    #[test]
+    fn to_html_escapes_attribute_values() {
+        let el = Node::element(ElementData::with_attributes(
+            "a",
+            vec![
+                ("href".into(), "https://ex.com?q=a&b=\"c\"".into()),
+                ("title".into(), "Jane & John".into()),
+            ],
+        ));
+        let html = el.to_html();
+        assert_eq!(
+            html,
+            "<a href=\"https://ex.com?q=a&amp;b=&quot;c&quot;\" title=\"Jane &amp; John\"></a>"
+        );
     }
 
     #[test]

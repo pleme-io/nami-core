@@ -116,6 +116,48 @@ impl ComponentRegistry {
             .ok_or_else(|| format!("unknown component: {name}"))?;
         expand(spec, props)
     }
+
+    /// Expand a component and serialize the result to an HTML string,
+    /// ready to hand off to the transform engine as a snippet. Prop
+    /// pairs are `(name, value)` with numeric-looking values parsed as
+    /// JSON numbers so component templates can do `(: (+ n 1))` on
+    /// integer props authored in Lisp.
+    pub fn expand_to_html(
+        &self,
+        name: &str,
+        props: &[(String, String)],
+    ) -> Result<String, String> {
+        let json = props_to_json(props);
+        let nodes = self.expand(name, &json)?;
+        let mut html = String::new();
+        for n in &nodes {
+            html.push_str(&n.to_html());
+        }
+        Ok(html)
+    }
+}
+
+/// Build a JSON object from author-facing prop pairs. Numeric and
+/// boolean literal strings lift into JSON numbers / booleans so
+/// evaluator expressions can do arithmetic / conditionals without
+/// forcing authors to type-annotate each prop.
+fn props_to_json(props: &[(String, String)]) -> Value {
+    let mut map = serde_json::Map::new();
+    for (k, v) in props {
+        let value = if let Ok(n) = v.parse::<i64>() {
+            Value::from(n)
+        } else if let Ok(f) = v.parse::<f64>() {
+            serde_json::Number::from_f64(f).map_or_else(|| Value::String(v.clone()), Value::Number)
+        } else if v == "true" {
+            Value::Bool(true)
+        } else if v == "false" {
+            Value::Bool(false)
+        } else {
+            Value::String(v.clone())
+        };
+        map.insert(k.clone(), value);
+    }
+    Value::Object(map)
 }
 
 /// Expand one spec against a prop value. Parses the template each

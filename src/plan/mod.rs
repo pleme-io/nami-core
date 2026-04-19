@@ -185,6 +185,8 @@ mod tests {
             selector: sel.into(),
             action: DomAction::Remove,
             arg: None,
+            component: None,
+            props: Vec::new(),
             description: None,
         }
     }

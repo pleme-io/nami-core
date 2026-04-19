@@ -282,6 +282,40 @@ impl Store {
         Some(inner.indexes.get(index_path)?.keys().cloned().collect())
     }
 
+    /// Range scan over a secondary index — every entry whose projected
+    /// value at `index_path` falls lexicographically in `[lo, hi]`
+    /// (inclusive bounds). `lo = ""` / `hi = "\u{10FFFF}"` collapses
+    /// to an unbounded scan. Uses `BTreeMap::range` so the walk is
+    /// O(log n + k) in the hit count.
+    ///
+    /// Numeric values are compared lexicographically on their string
+    /// form — zero-pad your keys (`"0030"` not `"30"`) when you want
+    /// numeric ordering and the index is of unbounded width.
+    ///
+    /// Returns `None` when the index isn't declared.
+    #[must_use]
+    pub fn by_index_range(
+        &self,
+        index_path: &str,
+        lo: &str,
+        hi: &str,
+    ) -> Option<Vec<(String, Value)>> {
+        let mut inner = self.lock();
+        let ttl = inner.ttl;
+        prune_expired(&mut inner.entries, ttl);
+        let keys: Vec<String> = inner
+            .indexes
+            .get(index_path)?
+            .range(lo.to_owned()..=hi.to_owned())
+            .flat_map(|(_, set)| set.iter().cloned())
+            .collect();
+        Some(
+            keys.into_iter()
+                .filter_map(|k| inner.entries.get(&k).map(|e| (k, e.value.clone())))
+                .collect(),
+        )
+    }
+
     /// All declared index paths.
     #[must_use]
     pub fn index_paths(&self) -> Vec<String> {
@@ -1261,6 +1295,59 @@ mod tests {
         // Generous bound — CI hosts are slow — but still orders of
         // magnitude below O(n) JSON walks.
         assert!(dt < std::time::Duration::from_millis(100), "elapsed: {dt:?}");
+    }
+
+    #[test]
+    fn by_index_range_inclusive_bounds() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["domain"]));
+        s.set("a", json!({"domain": "apple.com"}));
+        s.set("b", json!({"domain": "banana.com"}));
+        s.set("c", json!({"domain": "cherry.com"}));
+        s.set("d", json!({"domain": "date.com"}));
+
+        let mid = s.by_index_range("domain", "b", "c\u{FFFF}").unwrap();
+        let hits: std::collections::HashSet<String> =
+            mid.into_iter().map(|(k, _)| k).collect();
+        assert!(hits.contains("b"));
+        assert!(hits.contains("c"));
+        assert!(!hits.contains("a"));
+        assert!(!hits.contains("d"));
+    }
+
+    #[test]
+    fn by_index_range_empty_when_no_overlap() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["k"]));
+        s.set("a", json!({"k": "alpha"}));
+        let miss = s.by_index_range("k", "z", "zz").unwrap();
+        assert!(miss.is_empty());
+    }
+
+    #[test]
+    fn by_index_range_full_unbounded_returns_everything() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["tier"]));
+        s.set("u/1", json!({"tier": "free"}));
+        s.set("u/2", json!({"tier": "paid"}));
+        s.set("u/3", json!({"tier": "enterprise"}));
+        let all = s.by_index_range("tier", "", "\u{10FFFF}").unwrap();
+        assert_eq!(all.len(), 3);
+    }
+
+    #[test]
+    fn by_index_range_on_undeclared_path_is_none() {
+        let s = Store::from_spec(&spec("x"));
+        assert!(s.by_index_range("nope", "a", "z").is_none());
+    }
+
+    #[test]
+    fn by_index_range_lex_order_with_zero_pad_numeric_keys() {
+        // Demonstrate the "zero-pad for numeric order" convention.
+        let s = Store::from_spec(&spec_with_indexes("x", &["age"]));
+        s.set("u/1", json!({"age": "0018"}));
+        s.set("u/2", json!({"age": "0032"}));
+        s.set("u/3", json!({"age": "0045"}));
+        s.set("u/4", json!({"age": "0060"}));
+        let adults_under_50 = s.by_index_range("age", "0018", "0049").unwrap();
+        assert_eq!(adults_under_50.len(), 3);
     }
 
     #[cfg(feature = "lisp")]

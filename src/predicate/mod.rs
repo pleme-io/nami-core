@@ -321,43 +321,8 @@ fn count_walk(
     }
 }
 
-#[derive(Clone)]
-struct PathItem {
-    tag: String,
-    attrs: Vec<(String, String)>,
-}
-
-impl PathItem {
-    fn from_element(el: &crate::dom::ElementData) -> Self {
-        Self {
-            tag: el.tag.clone(),
-            attrs: el.attributes.clone(),
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<&str> {
-        self.attrs
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str())
-    }
-}
-
-impl crate::selector::SelectorNode for PathItem {
-    fn tag(&self) -> &str {
-        &self.tag
-    }
-    fn has_class(&self, class: &str) -> bool {
-        self.get("class")
-            .is_some_and(|c| c.split_whitespace().any(|w| w == class))
-    }
-    fn id(&self) -> Option<&str> {
-        self.get("id")
-    }
-    fn attr(&self, name: &str) -> Option<&str> {
-        self.get(name)
-    }
-}
+// Canonical ancestor-path element lives in `selector::OwnedContext`.
+type PathItem = crate::selector::OwnedContext;
 
 /// Compile a Lisp document of `(defpredicate …)` forms.
 #[cfg(feature = "lisp")]

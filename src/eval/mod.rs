@@ -122,15 +122,12 @@ impl Default for NamiEvaluator {
     }
 }
 
-/// Public conversion — used by sibling modules (`store`) that bind
-/// JSON into the evaluator too.
-pub fn json_to_value_public(v: &JsonValue) -> Value {
-    json_to_value(v)
-}
-
 /// Convert a serde JSON value into a tatara-eval [`Value`]. Nested
 /// objects become `Attrs` (BTreeMap<String, Value>).
-fn json_to_value(v: &JsonValue) -> Value {
+///
+/// Public because sibling modules (`store`, `derived`) bind JSON
+/// into the evaluator too.
+pub fn json_to_value(v: &JsonValue) -> Value {
     match v {
         JsonValue::Null => Value::Nil,
         JsonValue::Bool(b) => Value::Bool(*b),
@@ -155,6 +152,38 @@ fn json_to_value(v: &JsonValue) -> Value {
             }
             Value::Attrs(std::sync::Arc::new(out))
         }
+    }
+}
+
+/// Convert a tatara-eval [`Value`] back into JSON for storage or
+/// wire transport. Primitives round-trip exactly; `List`/`Attrs`
+/// recurse; symbols + keywords serialise as strings (with `:`
+/// prefix preserved for keywords); lambdas / thunks / native
+/// builtins fall back to their `Debug` form (lossy but
+/// deterministic).
+///
+/// Public for the same reason as [`json_to_value`] — `store` and
+/// `derived` both need it.
+pub fn value_to_json(v: &Value) -> JsonValue {
+    match v {
+        Value::Nil => JsonValue::Null,
+        Value::Bool(b) => JsonValue::Bool(*b),
+        Value::Int(n) => JsonValue::Number((*n).into()),
+        Value::Float(f) => serde_json::Number::from_f64(*f)
+            .map(JsonValue::Number)
+            .unwrap_or(JsonValue::Null),
+        Value::Str(s) => JsonValue::String(s.clone()),
+        Value::Symbol(s) => JsonValue::String(s.clone()),
+        Value::Keyword(k) => JsonValue::String(format!(":{k}")),
+        Value::List(items) => JsonValue::Array(items.iter().map(value_to_json).collect()),
+        Value::Attrs(map) => {
+            let mut out = serde_json::Map::new();
+            for (k, v) in map.iter() {
+                out.insert(k.clone(), value_to_json(v));
+            }
+            JsonValue::Object(out)
+        }
+        other => JsonValue::String(format!("{other:?}")),
     }
 }
 

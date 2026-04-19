@@ -145,8 +145,7 @@ pub fn bind_into(evaluator: &crate::eval::NamiEvaluator, store: &StateStore) {
 
     // Read pass: snapshot every cell and bind as a symbol.
     for (name, value) in store.snapshot() {
-        let converted = crate::eval::json_to_value_public(&value);
-        interpreter.define(name, converted);
+        interpreter.define(name, crate::eval::json_to_value(&value));
     }
 
     // Write path: expose a `(set-state NAME VALUE)` builtin.
@@ -165,40 +164,12 @@ pub fn bind_into(evaluator: &crate::eval::NamiEvaluator, store: &StateStore) {
                     });
                 }
             };
-            let json = value_to_json(&args[1]);
+            let json = crate::eval::value_to_json(&args[1]);
             store_handle.set(&name, json);
             Ok(args[1].clone())
         }),
     };
     interpreter.define("set-state", Value::Builtin(Arc::new(set_state)));
-}
-
-/// Convert a tatara-eval Value into JSON for storage. Conservative:
-/// primitives round-trip; complex values (lambdas, thunks) serialize
-/// to strings.
-#[cfg(feature = "eval")]
-fn value_to_json(v: &tatara_eval::Value) -> JsonValue {
-    use tatara_eval::Value;
-    match v {
-        Value::Nil => JsonValue::Null,
-        Value::Bool(b) => JsonValue::Bool(*b),
-        Value::Int(n) => JsonValue::Number((*n).into()),
-        Value::Float(f) => serde_json::Number::from_f64(*f)
-            .map(JsonValue::Number)
-            .unwrap_or(JsonValue::Null),
-        Value::Str(s) => JsonValue::String(s.clone()),
-        Value::Symbol(s) => JsonValue::String(s.clone()),
-        Value::Keyword(k) => JsonValue::String(format!(":{k}")),
-        Value::List(items) => JsonValue::Array(items.iter().map(value_to_json).collect()),
-        Value::Attrs(map) => {
-            let mut out = serde_json::Map::new();
-            for (k, v) in map.iter() {
-                out.insert(k.clone(), value_to_json(v));
-            }
-            JsonValue::Object(out)
-        }
-        other => JsonValue::String(format!("{other:?}")),
-    }
 }
 
 #[cfg(test)]

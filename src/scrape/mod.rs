@@ -28,7 +28,7 @@
 //! happens during scrape — safe to run alongside transforms.
 
 use crate::dom::{Document, Node, NodeData};
-use crate::selector::{Selector, SelectorNode};
+use crate::selector::{OwnedContext, Selector};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "lisp")]
@@ -126,45 +126,8 @@ pub fn scrape_stream<F: FnMut(ScrapeHit)>(doc: &Document, specs: &[ScrapeSpec], 
     }
 }
 
-#[derive(Clone)]
-struct PathItem {
-    tag: String,
-    /// Full attribute list — needed so attribute selectors like
-    /// `[hx-get]` and `[data-slot="card"]` can match against ancestors.
-    attrs: Vec<(String, String)>,
-}
-
-impl PathItem {
-    fn from_element(el: &crate::dom::ElementData) -> Self {
-        Self {
-            tag: el.tag.clone(),
-            attrs: el.attributes.clone(),
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<&str> {
-        self.attrs
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str())
-    }
-}
-
-impl SelectorNode for PathItem {
-    fn tag(&self) -> &str {
-        &self.tag
-    }
-    fn has_class(&self, class: &str) -> bool {
-        self.get("class")
-            .is_some_and(|c| c.split_whitespace().any(|w| w == class))
-    }
-    fn id(&self) -> Option<&str> {
-        self.get("id")
-    }
-    fn attr(&self, name: &str) -> Option<&str> {
-        self.get(name)
-    }
-}
+// Canonical ancestor-path element lives in `selector::OwnedContext`.
+type PathItem = OwnedContext;
 
 fn walk(
     node: &Node,

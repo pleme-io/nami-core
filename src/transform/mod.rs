@@ -31,7 +31,7 @@
 //! Rust-level types and engine are always available.
 
 use crate::dom::{Document, ElementData, Node, NodeData};
-use crate::selector::{Selector, SelectorNode};
+use crate::selector::{OwnedContext, Selector};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "lisp")]
@@ -95,51 +95,8 @@ pub struct TransformHit {
     pub tag: String,
 }
 
-/// Lightweight owned snapshot of an element's selector-relevant attrs.
-///
-/// Used as ancestor-path elements during traversal because we can't
-/// simultaneously hold `&ElementData` and `&mut` the tree. Cheap-ish
-/// (three small allocations) and built once per node visited.
-#[derive(Clone)]
-struct PathItem {
-    tag: String,
-    /// Full attribute list — needed so attribute selectors
-    /// (`[hx-get]`, `[data-slot="card"]`, `[href^="https://"]`) can
-    /// match against any ancestor, not just the leaf.
-    attrs: Vec<(String, String)>,
-}
-
-impl PathItem {
-    fn from_element(el: &ElementData) -> Self {
-        Self {
-            tag: el.tag.clone(),
-            attrs: el.attributes.clone(),
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<&str> {
-        self.attrs
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str())
-    }
-}
-
-impl SelectorNode for PathItem {
-    fn tag(&self) -> &str {
-        &self.tag
-    }
-    fn has_class(&self, class: &str) -> bool {
-        self.get("class")
-            .is_some_and(|c| c.split_whitespace().any(|w| w == class))
-    }
-    fn id(&self) -> Option<&str> {
-        self.get("id")
-    }
-    fn attr(&self, name: &str) -> Option<&str> {
-        self.get(name)
-    }
-}
+// Canonical ancestor-path element lives in `selector::OwnedContext`.
+type PathItem = OwnedContext;
 
 /// A compiled spec (parsed selector) ready to apply.
 struct Compiled<'a> {

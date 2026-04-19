@@ -161,7 +161,7 @@ fn evaluate_spec_inner(
     reg: Option<&DerivedRegistry>,
     visiting: &mut std::collections::HashSet<String>,
 ) -> Result<JsonValue, String> {
-    use crate::eval::{NamiEvaluator, value_to_string};
+    use crate::eval::NamiEvaluator;
     use serde_json::json;
 
     let evaluator = NamiEvaluator::new();
@@ -183,8 +183,9 @@ fn evaluate_spec_inner(
                 continue;
             }
             if let Ok(v) = evaluate_spec(other, store, Some(reg), visiting) {
-                let tv = crate::eval::json_to_value_public(&v);
-                evaluator.interpreter().define(&other.name, tv);
+                evaluator
+                    .interpreter()
+                    .define(&other.name, crate::eval::json_to_value(&v));
             }
         }
     }
@@ -193,34 +194,7 @@ fn evaluate_spec_inner(
         .eval(&spec.compute, &json!({}))
         .map_err(|e| format!("derived {} compute: {e}", spec.name))?;
 
-    Ok(eval_value_to_json(&raw, &value_to_string))
-}
-
-/// Convert a tatara-eval Value back into JSON. Primitives round-trip
-/// exactly; complex values serialize via their Debug form (lossy but
-/// deterministic).
-#[cfg(feature = "eval")]
-fn eval_value_to_json(
-    v: &tatara_eval::Value,
-    stringify: &dyn Fn(&tatara_eval::Value) -> String,
-) -> JsonValue {
-    use tatara_eval::Value;
-    match v {
-        Value::Nil => JsonValue::Null,
-        Value::Bool(b) => JsonValue::Bool(*b),
-        Value::Int(n) => JsonValue::Number((*n).into()),
-        Value::Float(f) => serde_json::Number::from_f64(*f)
-            .map(JsonValue::Number)
-            .unwrap_or(JsonValue::Null),
-        Value::Str(s) => JsonValue::String(s.clone()),
-        Value::List(items) => JsonValue::Array(
-            items
-                .iter()
-                .map(|v| eval_value_to_json(v, stringify))
-                .collect(),
-        ),
-        other => JsonValue::String(stringify(other)),
-    }
+    Ok(crate::eval::value_to_json(&raw))
 }
 
 /// Compile a Lisp document of `(defderived …)` forms.

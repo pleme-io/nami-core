@@ -171,6 +171,60 @@ impl SelectorNode for crate::dom::ElementData {
     }
 }
 
+// ── OwnedContext — the canonical owned SelectorNode impl ──────────
+//
+// Tree walks that pair an immutable ancestor-path with a mutable
+// document can't hold `&ElementData` borrows alongside `&mut Node`,
+// so they snapshot each element's selector-relevant attrs into an
+// owned value. That value was duplicated across `transform`,
+// `scrape`, and `predicate`; this is the one canonical home.
+
+/// A lightweight owned snapshot of an element's selector-relevant
+/// attributes. Built once per visited element during a tree walk.
+#[derive(Debug, Clone)]
+pub struct OwnedContext {
+    pub tag: String,
+    /// Full attribute list — so attribute selectors like `[hx-get]`,
+    /// `[data-slot="card"]`, `[href^="https://"]` can match against
+    /// any ancestor, not just the leaf.
+    pub attrs: Vec<(String, String)>,
+}
+
+impl OwnedContext {
+    #[must_use]
+    pub fn from_element(el: &crate::dom::ElementData) -> Self {
+        Self {
+            tag: el.tag.clone(),
+            attrs: el.attributes.clone(),
+        }
+    }
+
+    /// Look up one attribute by name.
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.attrs
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.as_str())
+    }
+}
+
+impl SelectorNode for OwnedContext {
+    fn tag(&self) -> &str {
+        &self.tag
+    }
+    fn has_class(&self, class: &str) -> bool {
+        self.get("class")
+            .is_some_and(|c| c.split_whitespace().any(|w| w == class))
+    }
+    fn id(&self) -> Option<&str> {
+        self.get("id")
+    }
+    fn attr(&self, name: &str) -> Option<&str> {
+        self.get(name)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

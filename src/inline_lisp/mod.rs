@@ -18,17 +18,28 @@
 //!
 //! ## Host builtins
 //!
-//! A small DOM-emit surface is pre-registered on every evaluator used
+//! A small DOM surface is pre-registered on every evaluator used
 //! by this module:
+//!
+//! **Emit (always available)**
 //!
 //! | builtin         | shape                      | emits |
 //! | --------------- | -------------------------- | ----- |
 //! | `text-node`     | `(text-node STR)`          | `(text "STR")` |
 //! | `elem`          | `(elem TAG TEXT)`          | `(element :tag "TAG" (text "TEXT"))` |
 //!
-//! These are enough to cover ~90% of inline macros. For richer trees,
-//! author a `(defcomponent …)` in your rc file and call
-//! `(render-component "Name" props)` — the V2 builtin.
+//! **Query (when expand_with passes a snapshot)**
+//!
+//! | builtin           | shape                  | returns |
+//! | ----------------- | ---------------------- | ------- |
+//! | `has-selector?`   | `(has-selector? SEL)`  | Bool    |
+//! | `query-count`     | `(query-count SEL)`    | Int     |
+//! | `query-text`      | `(query-text SEL)`     | Str (first match's text, or "") |
+//! | `query-attr`      | `(query-attr SEL KEY)` | Str (first match's attr, or "") |
+//!
+//! Query builtins resolve against a read-only snapshot captured before
+//! expansion starts, so macros see the page as originally authored —
+//! not the running result of their own siblings' edits.
 //!
 //! ## Output
 //!
@@ -70,16 +81,28 @@ pub struct ExpandReport {
 /// evaluator if not already present. Safe to call repeatedly on the
 /// same evaluator.
 pub fn expand(doc: &mut Document, eval: &NamiEvaluator) -> ExpandReport {
-    install_host_builtins(eval);
+    expand_with(doc, eval, None)
+}
+
+/// Expand with an optional read-only DOM snapshot for query builtins.
+/// When `snapshot` is `Some`, `(has-selector? …)` / `(query-count …)`
+/// / `(query-text …)` / `(query-attr …)` become available.
+pub fn expand_with(
+    doc: &mut Document,
+    eval: &NamiEvaluator,
+    snapshot: Option<Arc<Document>>,
+) -> ExpandReport {
+    install_host_builtins(eval, snapshot);
     let mut report = ExpandReport::default();
     expand_children(&mut doc.root.children, eval, &mut report);
     report
 }
 
-fn install_host_builtins(eval: &NamiEvaluator) {
+fn install_host_builtins(eval: &NamiEvaluator, snapshot: Option<Arc<Document>>) {
     let interp = eval.interpreter();
 
-    // (text-node STR) → "(text \"STR\")"
+    // ── emit surface ─────────────────────────────────────────────
+
     interp.define(
         "text-node",
         Value::Builtin(Arc::new(Builtin {
@@ -92,7 +115,6 @@ fn install_host_builtins(eval: &NamiEvaluator) {
         })),
     );
 
-    // (elem TAG TEXT) → "(element :tag \"TAG\" (text \"TEXT\"))"
     interp.define(
         "elem",
         Value::Builtin(Arc::new(Builtin {
@@ -106,6 +128,75 @@ fn install_host_builtins(eval: &NamiEvaluator) {
                     escape_sexp_string(&tag),
                     escape_sexp_string(&inner)
                 )))
+            }),
+        })),
+    );
+
+    // ── query surface (snapshot-backed) ──────────────────────────
+
+    let Some(snap) = snapshot else {
+        return;
+    };
+
+    let s = Arc::clone(&snap);
+    interp.define(
+        "has-selector?",
+        Value::Builtin(Arc::new(Builtin {
+            name: "has-selector?".into(),
+            arity: Arity::Exact(1),
+            func: Arc::new(move |args: &[Value]| {
+                let sel = value_to_string(&args[0]);
+                Ok(Value::Bool(s.query_selector(&sel).is_some()))
+            }),
+        })),
+    );
+
+    let s = Arc::clone(&snap);
+    interp.define(
+        "query-count",
+        Value::Builtin(Arc::new(Builtin {
+            name: "query-count".into(),
+            arity: Arity::Exact(1),
+            func: Arc::new(move |args: &[Value]| {
+                let sel = value_to_string(&args[0]);
+                Ok(Value::Int(s.query_selector_all(&sel).len() as i64))
+            }),
+        })),
+    );
+
+    let s = Arc::clone(&snap);
+    interp.define(
+        "query-text",
+        Value::Builtin(Arc::new(Builtin {
+            name: "query-text".into(),
+            arity: Arity::Exact(1),
+            func: Arc::new(move |args: &[Value]| {
+                let sel = value_to_string(&args[0]);
+                let text = s
+                    .query_selector(&sel)
+                    .map(crate::dom::Node::text_content)
+                    .unwrap_or_default();
+                Ok(Value::Str(text.trim().to_owned()))
+            }),
+        })),
+    );
+
+    let s = Arc::clone(&snap);
+    interp.define(
+        "query-attr",
+        Value::Builtin(Arc::new(Builtin {
+            name: "query-attr".into(),
+            arity: Arity::Exact(2),
+            func: Arc::new(move |args: &[Value]| {
+                let sel = value_to_string(&args[0]);
+                let attr = value_to_string(&args[1]);
+                let val = s
+                    .query_selector(&sel)
+                    .and_then(|n| n.as_element())
+                    .and_then(|el| el.get_attribute(&attr))
+                    .map(str::to_owned)
+                    .unwrap_or_default();
+                Ok(Value::Str(val))
             }),
         })),
     );
@@ -342,5 +433,96 @@ mod tests {
         let report = expand(&mut doc, &eval());
         assert_eq!(report.evaluated, 0);
         assert_eq!(report.failed, 0);
+    }
+
+    #[test]
+    fn has_selector_query_resolves_against_snapshot() {
+        let html = r#"<html><body>
+            <article><p>hi</p></article>
+            <l-eval>(if (has-selector? "article") (elem "aside" "is-article") (text-node "not"))</l-eval>
+        </body></html>"#;
+        let mut doc = Document::parse(html);
+        let snapshot = Arc::new(doc.clone());
+        let report = expand_with(&mut doc, &eval(), Some(snapshot));
+        assert_eq!(report.evaluated, 1);
+        let mut found = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "aside" && n.text_content() == "is-article" {
+                    found = true;
+                }
+            }
+        }
+        assert!(found, "branch-based DOM injection failed");
+    }
+
+    #[test]
+    fn query_count_returns_int() {
+        let html = r#"<html><body>
+            <li>a</li><li>b</li><li>c</li>
+            <l-eval>(elem "span" (query-count "li"))</l-eval>
+        </body></html>"#;
+        let mut doc = Document::parse(html);
+        let snapshot = Arc::new(doc.clone());
+        expand_with(&mut doc, &eval(), Some(snapshot));
+        // Lisp converts the Int(3) to "3" when emitted.
+        let mut found = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "span" && n.text_content() == "3" {
+                    found = true;
+                }
+            }
+        }
+        assert!(found);
+    }
+
+    #[test]
+    fn query_text_extracts_title() {
+        let html = r#"<html><head><title>The Page</title></head><body>
+            <l-eval>(elem "h1" (query-text "title"))</l-eval>
+        </body></html>"#;
+        let mut doc = Document::parse(html);
+        let snapshot = Arc::new(doc.clone());
+        expand_with(&mut doc, &eval(), Some(snapshot));
+        let mut found = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "h1" && n.text_content() == "The Page" {
+                    found = true;
+                }
+            }
+        }
+        assert!(found);
+    }
+
+    #[test]
+    fn query_attr_reads_element_attribute() {
+        let html = r##"<html><body>
+            <div id="main" data-slot="card">x</div>
+            <l-eval>(elem "span" (query-attr "#main" "data-slot"))</l-eval>
+        </body></html>"##;
+        let mut doc = Document::parse(html);
+        let snapshot = Arc::new(doc.clone());
+        expand_with(&mut doc, &eval(), Some(snapshot));
+        let mut found = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "span" && n.text_content() == "card" {
+                    found = true;
+                }
+            }
+        }
+        assert!(found);
+    }
+
+    #[test]
+    fn query_builtins_absent_without_snapshot() {
+        // Without a snapshot, `(has-selector? …)` should raise an
+        // unbound-symbol error — which surfaces as `failed += 1`.
+        let html = r#"<l-eval>(has-selector? "article")</l-eval>"#;
+        let mut doc = Document::parse(html);
+        let report = expand(&mut doc, &eval());
+        assert_eq!(report.failed, 1);
     }
 }

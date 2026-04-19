@@ -239,6 +239,8 @@ fn full_substrate_composes_end_to_end() {
         selector: "@ad".into(),
         action: nami_core::transform::DomAction::Remove,
         arg: None,
+        component: None,
+        props: Vec::new(),
         description: None,
     }];
     let expanded = aliases.expand_transforms(&raw_transforms, &detections);

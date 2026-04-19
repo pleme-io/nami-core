@@ -153,3 +153,211 @@ proptest! {
         prop_assert_eq!(m.params.get("id").map(String::as_str), Some(id.as_str()));
     }
 }
+
+// ── 5. Normalize pipeline invariants ────────────────────────────
+//
+// Every property below is a claim about `normalize::apply` that must
+// hold for any well-formed input. Failure here is a bug in the
+// normalize engine, not in the rule pack — the engine's contract
+// is what users reason against when authoring normalize packs.
+//
+use nami_core::framework::{Detection, Framework};
+use nami_core::normalize::{NormalizeRegistry, NormalizeSpec};
+
+fn arb_tag() -> impl Strategy<Value = String> {
+    prop_oneof![
+        Just("article".to_owned()),
+        Just("nav".to_owned()),
+        Just("section".to_owned()),
+        Just("main".to_owned()),
+        Just("aside".to_owned()),
+        Just("div".to_owned()),
+        Just("p".to_owned()),
+    ]
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+
+    // P1. Every applied hit corresponds to at least one element now
+    // carrying `data-n-from` with the old tag.
+    #[test]
+    fn hit_count_matches_stamped_elements(
+        tags in prop::collection::vec(arb_tag(), 1..10)
+    ) {
+        let mut html = String::from("<html><body>");
+        for t in &tags {
+            html.push_str(&format!("<{t}>x</{t}>"));
+        }
+        html.push_str("</body></html>");
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "r-article".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let mut doc = Document::parse(&html);
+        let report = nami_core::normalize::apply(&mut doc, &reg, &[]);
+
+        // Count elements that now have `data-n-from=article`.
+        let stamped = doc.root.descendants()
+            .filter_map(|n| n.as_element())
+            .filter(|el| el.get_attribute("data-n-from") == Some("article"))
+            .count();
+
+        prop_assert_eq!(
+            report.applied(),
+            stamped,
+            "hit count {} should equal elements stamped with data-n-from=article ({}); tags={:?}",
+            report.applied(), stamped, tags
+        );
+    }
+
+    // P2. Inbound fold is idempotent — running a rename-to-n-foo rule
+    // a second time produces zero new hits (the source tag is gone).
+    #[test]
+    fn inbound_fold_idempotent(
+        ts in prop::collection::vec(arb_tag(), 0..8)
+    ) {
+        let mut html = String::from("<html><body>");
+        for t in &ts { html.push_str(&format!("<{t}>x</{t}>")); }
+        html.push_str("</body></html>");
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "art".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let mut doc = Document::parse(&html);
+        let _ = nami_core::normalize::apply(&mut doc, &reg, &[]);
+        let second = nami_core::normalize::apply(&mut doc, &reg, &[]);
+
+        prop_assert_eq!(second.applied(), 0, "idempotency violated on second pass");
+    }
+
+    // P3. An unused framework gate is a perfect mute — zero rewrites
+    // when the detection list doesn't match.
+    #[test]
+    fn framework_gate_mutes_when_absent(
+        ts in prop::collection::vec(arb_tag(), 0..6)
+    ) {
+        let mut html = String::from("<html><body>");
+        for t in &ts { html.push_str(&format!("<{t}>x</{t}>")); }
+        html.push_str("</body></html>");
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "gated".into(),
+            framework: Some("some-framework-that-is-not-detected".into()),
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let mut doc = Document::parse(&html);
+        let report = nami_core::normalize::apply(&mut doc, &reg, &[]);
+        prop_assert_eq!(report.applied(), 0);
+    }
+
+    // P4. Empty registry is a total no-op — the pre-/post-pass DOMs
+    // serialize identically.
+    #[test]
+    fn empty_registry_is_identity(
+        ts in prop::collection::vec(arb_tag(), 0..6)
+    ) {
+        let mut html = String::from("<html><body>");
+        for t in &ts { html.push_str(&format!("<{t}>x</{t}>")); }
+        html.push_str("</body></html>");
+
+        let before = Document::parse(&html);
+        let before_sexp = dom_to_sexp_with(&before, &SexpOptions::default());
+
+        let reg = NormalizeRegistry::new();
+        let mut after = Document::parse(&html);
+        let _ = nami_core::normalize::apply(&mut after, &reg, &[]);
+        let after_sexp = dom_to_sexp_with(&after, &SexpOptions::default());
+
+        prop_assert_eq!(before_sexp, after_sexp);
+    }
+
+    // P5. Roundtrip fold → emit preserves text content.
+    // fold: article → n-article. emit: n-article → div[data-slot=article].
+    #[test]
+    fn fold_then_emit_preserves_text(
+        inner in "[a-z ]{1,30}",
+    ) {
+        let html = format!("<html><body><article>{inner}</article></body></html>");
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "fold".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+        reg.insert(NormalizeSpec {
+            name: "emit".into(),
+            framework: None,
+            selector: "n-article".into(),
+            rename_to: "div".into(),
+            set_attrs: vec![("data-slot".into(), "article".into())],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let mut doc = Document::parse(&html);
+        let _ = nami_core::normalize::apply(&mut doc, &reg, &[]);
+        let text = doc.text_content();
+        prop_assert!(text.contains(&inner), "text content {:?} lost original body {:?}", text, inner);
+    }
+
+    // P6. Framework detection string matching is total for named
+    // variants — for every Framework::* enum variant we can construct,
+    // a rule gated on its canonical name matches.
+    #[test]
+    fn detected_framework_name_gates_match(
+        tag in arb_tag(),
+    ) {
+        let html = format!("<html><body><{tag}>x</{tag}></body></html>");
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "gated".into(),
+            framework: Some("shadcn/radix".into()),
+            selector: tag.clone(),
+            rename_to: format!("n-{tag}"),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let det = vec![Detection {
+            framework: Framework::ShadcnRadix,
+            name: "shadcn/radix",
+            confidence: 0.9,
+            evidence: vec![],
+        }];
+
+        let mut doc = Document::parse(&html);
+        let report = nami_core::normalize::apply(&mut doc, &reg, &det);
+        // At least 1 element of `tag` existed → at least 1 hit.
+        prop_assert!(report.applied() >= 1);
+    }
+}

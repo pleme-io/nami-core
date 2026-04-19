@@ -15,6 +15,7 @@
 
 pub mod agent;
 pub mod alias;
+pub mod component;
 pub mod config;
 pub mod content;
 pub mod css;

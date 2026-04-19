@@ -44,5 +44,6 @@ pub mod state;
 pub mod storage;
 pub mod store;
 pub mod transform;
+pub mod typescape;
 #[cfg(feature = "wasm")]
 pub mod wasm;

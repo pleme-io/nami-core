@@ -19,6 +19,7 @@ pub mod component;
 pub mod config;
 pub mod content;
 pub mod css;
+pub mod derived;
 pub mod dom;
 pub mod effect;
 #[cfg(feature = "eval")]
@@ -29,6 +30,7 @@ pub mod lisp;
 pub mod net;
 pub mod plan;
 pub mod predicate;
+pub mod query;
 pub mod scrape;
 pub mod selector;
 pub mod shadow;

@@ -44,6 +44,160 @@ pub fn parse_tsx(source: &str) -> Result<String, String> {
     Ok(ts_to_sexp(&tree, source))
 }
 
+/// Parse Svelte component source (a `.svelte` file). Template markup
+/// projects into a `Document` with each element tagged
+/// `data-ast-source="svelte"` for provenance. `<script>` and `<style>`
+/// sections are preserved as opaque elements (same as the rest).
+pub fn parse_svelte_as_document(source: &str) -> Result<Document, String> {
+    let language = tree_sitter_svelte_next::LANGUAGE;
+    let mut parser = Parser::new();
+    parser
+        .set_language(&language.into())
+        .map_err(|e| format!("set svelte language: {e}"))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| "tree-sitter: parse returned None".to_owned())?;
+
+    let mut doc = Document {
+        root: DomNode::document(),
+    };
+    walk_svelte_into_dom(&tree.root_node(), source, &mut doc.root.children);
+    Ok(doc)
+}
+
+fn walk_svelte_into_dom(node: &Node, source: &str, out: &mut Vec<DomNode>) {
+    let kind = node.kind();
+    if is_svelte_element_kind(kind) {
+        if let Some(el) = svelte_element_to_dom(node, source) {
+            out.push(el);
+        }
+        return;
+    }
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            walk_svelte_into_dom(&child, source, out);
+        }
+    }
+}
+
+fn is_svelte_element_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "element"
+            | "script_element"
+            | "style_element"
+            | "template_element"
+            | "self_closing_element"
+    )
+}
+
+fn svelte_element_to_dom(node: &Node, source: &str) -> Option<DomNode> {
+    let mut tag: Option<String> = None;
+    let mut attrs: Vec<(String, String)> = Vec::new();
+    let mut children: Vec<DomNode> = Vec::new();
+
+    for i in 0..node.child_count() {
+        let child = node.child(i)?;
+        let kind = child.kind();
+
+        if kind == "start_tag" || kind == "self_closing_tag" {
+            let (t, a) = parse_svelte_start_tag(&child, source);
+            if tag.is_none() {
+                tag = t;
+            }
+            attrs.extend(a);
+            continue;
+        }
+        if kind == "end_tag" {
+            continue;
+        }
+        if kind == "text" || kind == "raw_text" {
+            if let Some(text) = source.get(child.byte_range()) {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    children.push(DomNode::text(trimmed.to_owned()));
+                }
+            }
+            continue;
+        }
+        if is_svelte_element_kind(kind) {
+            let mut bucket = Vec::new();
+            walk_svelte_into_dom(&child, source, &mut bucket);
+            children.extend(bucket);
+            continue;
+        }
+        // Svelte-specific blocks: `{#if …}`, `{#each …}`, interpolations
+        // `{expr}` — preserve as text so scrapes can still read the
+        // binding references.
+        if kind.starts_with("{") || kind.contains("expression") || kind == "interpolation" {
+            if let Some(text) = source.get(child.byte_range()) {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    children.push(DomNode::text(trimmed.to_owned()));
+                }
+            }
+        }
+    }
+
+    let mut el = ElementData::with_attributes(tag.unwrap_or_else(|| "svelte".to_owned()), attrs);
+    el.attributes
+        .push(("data-ast-source".to_owned(), "svelte".to_owned()));
+    let mut dom_node = DomNode::element(el);
+    dom_node.children = children;
+    Some(dom_node)
+}
+
+fn parse_svelte_start_tag(node: &Node, source: &str) -> (Option<String>, Vec<(String, String)>) {
+    let mut tag: Option<String> = None;
+    let mut attrs = Vec::new();
+    for i in 0..node.child_count() {
+        let Some(child) = node.child(i) else {
+            continue;
+        };
+        match child.kind() {
+            "tag_name" => {
+                if let Some(text) = source.get(child.byte_range()) {
+                    tag = Some(text.trim().to_owned());
+                }
+            }
+            "attribute" => {
+                if let Some(pair) = extract_svelte_attribute(&child, source) {
+                    attrs.push(pair);
+                }
+            }
+            _ => {}
+        }
+    }
+    (tag, attrs)
+}
+
+fn extract_svelte_attribute(node: &Node, source: &str) -> Option<(String, String)> {
+    let mut name: Option<String> = None;
+    let mut value: String = String::new();
+    for i in 0..node.child_count() {
+        let child = node.child(i)?;
+        let kind = child.kind();
+        if kind == "attribute_name" {
+            if name.is_none() {
+                if let Some(text) = source.get(child.byte_range()) {
+                    name = Some(text.trim().to_owned());
+                }
+            }
+        } else if kind == "quoted_attribute_value" || kind == "attribute_value" {
+            if let Some(text) = source.get(child.byte_range()) {
+                let t = text.trim();
+                let inner = t
+                    .strip_prefix('"')
+                    .and_then(|s| s.strip_suffix('"'))
+                    .or_else(|| t.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+                    .unwrap_or(t);
+                value = inner.to_owned();
+            }
+        }
+    }
+    Some((name?, value))
+}
+
 /// Parse plain TypeScript (no JSX).
 pub fn parse_ts(source: &str) -> Result<String, String> {
     let language = tree_sitter_typescript::LANGUAGE_TYPESCRIPT;
@@ -618,6 +772,125 @@ mod tests {
         let el = div.as_element().unwrap();
         assert_eq!(el.get_attribute("id"), Some("main"));
         assert_eq!(el.get_attribute("class"), Some("variant"));
+    }
+
+    // ── Svelte → Document mapping ─────────────────────────────────
+
+    #[test]
+    fn parse_svelte_basic_template_extracts_elements() {
+        let src = r#"<script>let x = 1;</script>
+<article class="post">
+  <h1>title</h1>
+  <p>body</p>
+</article>"#;
+        let doc = parse_svelte_as_document(src).expect("parse");
+        let tags: Vec<String> = doc
+            .root
+            .descendants()
+            .filter_map(|n| n.as_element().map(|e| e.tag.clone()))
+            .collect();
+        assert!(tags.iter().any(|t| t == "article"));
+        assert!(tags.iter().any(|t| t == "h1"));
+        assert!(tags.iter().any(|t| t == "p"));
+    }
+
+    #[test]
+    fn svelte_elements_carry_svelte_provenance() {
+        let src = "<div>x</div>";
+        let doc = parse_svelte_as_document(src).expect("parse");
+        let div = doc
+            .root
+            .descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "div"))
+            .expect("found div");
+        assert_eq!(
+            div.as_element().unwrap().get_attribute("data-ast-source"),
+            Some("svelte")
+        );
+    }
+
+    #[test]
+    fn svelte_attributes_are_captured() {
+        let src = r#"<a href="/a" class="primary" data-id="hello">link</a>"#;
+        let doc = parse_svelte_as_document(src).expect("parse");
+        let a = doc
+            .root
+            .descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "a"))
+            .unwrap();
+        let el = a.as_element().unwrap();
+        assert_eq!(el.get_attribute("href"), Some("/a"));
+        assert_eq!(el.get_attribute("class"), Some("primary"));
+        assert_eq!(el.get_attribute("data-id"), Some("hello"));
+    }
+
+    #[test]
+    fn svelte_interpolation_preserved_as_text() {
+        let src = "<p>{count}</p>";
+        let doc = parse_svelte_as_document(src).expect("parse");
+        let p = doc
+            .root
+            .descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "p"))
+            .unwrap();
+        assert!(p.text_content().contains("count"));
+    }
+
+    #[test]
+    fn same_normalize_rule_folds_html_jsx_and_svelte() {
+        // THE SHIP: three source languages, one DSL, identical result.
+        use crate::normalize::{apply, NormalizeRegistry, NormalizeSpec};
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "art".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let mut html = Document::parse("<html><body><article>x</article></body></html>");
+        let html_hits = apply(&mut html, &reg, &[]).applied();
+
+        let mut jsx = parse_tsx_as_document("const x = <article>x</article>;").expect("tsx");
+        let jsx_hits = apply(&mut jsx, &reg, &[]).applied();
+
+        let mut svelte = parse_svelte_as_document("<article>x</article>").expect("svelte");
+        let svelte_hits = apply(&mut svelte, &reg, &[]).applied();
+
+        assert_eq!(html_hits, 1);
+        assert_eq!(jsx_hits, 1);
+        assert_eq!(svelte_hits, 1);
+
+        // All three now have canonical n-article.
+        for doc in [&html, &jsx, &svelte] {
+            assert!(doc.root.descendants().any(|n| {
+                n.as_element().is_some_and(|e| e.tag == "n-article")
+            }));
+        }
+    }
+
+    #[test]
+    fn svelte_nested_elements_preserve_depth() {
+        let src = "<section><article><p>deep</p></article></section>";
+        let doc = parse_svelte_as_document(src).expect("parse");
+        // Section → article → p → text("deep")
+        let section = &doc.root.children[0];
+        assert_eq!(section.as_element().unwrap().tag, "section");
+        let article = &section.children[0];
+        assert_eq!(article.as_element().unwrap().tag, "article");
+        let p = &article.children[0];
+        assert_eq!(p.as_element().unwrap().tag, "p");
+        assert_eq!(p.text_content(), "deep");
+    }
+
+    #[test]
+    fn svelte_empty_source_is_empty_doc() {
+        let doc = parse_svelte_as_document("").expect("parse");
+        assert!(doc.root.children.is_empty());
     }
 
     // ── Determinism ───────────────────────────────────────────────

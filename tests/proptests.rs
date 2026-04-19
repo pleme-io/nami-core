@@ -466,6 +466,58 @@ proptest! {
         prop_assert_eq!(html_hits, jsx_hits, "tag={:?}", tag);
     }
 
+    // P9. Svelte source parses + normalizes equivalently to HTML for
+    // any well-formed simple element.
+    #[cfg(feature = "ts")]
+    #[test]
+    fn normalize_is_source_agnostic_across_html_and_svelte(
+        tag in "[a-z]{2,6}",
+    ) {
+        use nami_core::normalize::{apply, NormalizeRegistry, NormalizeSpec};
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "t".into(),
+            framework: None,
+            selector: tag.clone(),
+            rename_to: format!("n-{tag}"),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let html_src = format!("<html><body><{tag}>x</{tag}></body></html>");
+        let svelte_src = format!("<{tag}>x</{tag}>");
+
+        let mut html_doc = nami_core::dom::Document::parse(&html_src);
+        let html_hits = apply(&mut html_doc, &reg, &[]).applied();
+
+        let mut svelte_doc = nami_core::ast::parse_svelte_as_document(&svelte_src).expect("parse");
+        let svelte_hits = apply(&mut svelte_doc, &reg, &[]).applied();
+
+        prop_assert_eq!(html_hits, svelte_hits, "tag={:?}", tag);
+    }
+
+    #[cfg(feature = "ts")]
+    #[test]
+    fn svelte_parser_never_panics(s in "\\PC{0,400}") {
+        let _ = nami_core::ast::parse_svelte_as_document(&s);
+    }
+
+    #[cfg(feature = "ts")]
+    #[test]
+    fn parse_svelte_simple_element_always_yields_one_element(
+        tag in "[a-z]{1,8}",
+        body in "[a-z0-9 ]{0,30}",
+    ) {
+        let src = format!("<{tag}>{body}</{tag}>");
+        let doc = nami_core::ast::parse_svelte_as_document(&src).expect("parse");
+        let elements: Vec<_> = doc.root.descendants()
+            .filter_map(|n| n.as_element())
+            .collect();
+        prop_assert_eq!(elements.len(), 1, "expected 1 element, got {}; src: {:?}", elements.len(), src);
+        prop_assert_eq!(&elements[0].tag, &tag);
+    }
+
     // P7. Framework detection string matching is total for named
     // variants — for every Framework::* enum variant we can construct,
     // a rule gated on its canonical name matches.

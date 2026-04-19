@@ -25,6 +25,7 @@ pub mod net;
 pub mod plan;
 pub mod scrape;
 pub mod selector;
+pub mod shadow;
 pub mod state;
 pub mod storage;
 pub mod transform;

@@ -33,6 +33,10 @@
 //! `depth_cap` lets CLI consumers print partial trees for exploration
 //! without dumping a 5MB page. Truncated subtrees emit `(… :elided N)`.
 
+mod parse;
+
+pub use parse::sexp_to_dom;
+
 use crate::dom::{Document, Node, NodeData};
 use std::fmt::Write;
 

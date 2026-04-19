@@ -129,20 +129,24 @@ pub fn scrape_stream<F: FnMut(ScrapeHit)>(doc: &Document, specs: &[ScrapeSpec], 
 #[derive(Clone)]
 struct PathItem {
     tag: String,
-    class_attr: String,
-    id: Option<String>,
+    /// Full attribute list — needed so attribute selectors like
+    /// `[hx-get]` and `[data-slot="card"]` can match against ancestors.
+    attrs: Vec<(String, String)>,
 }
 
 impl PathItem {
     fn from_element(el: &crate::dom::ElementData) -> Self {
         Self {
             tag: el.tag.clone(),
-            class_attr: el
-                .get_attribute("class")
-                .map(str::to_owned)
-                .unwrap_or_default(),
-            id: el.get_attribute("id").map(str::to_owned),
+            attrs: el.attributes.clone(),
         }
+    }
+
+    fn get(&self, key: &str) -> Option<&str> {
+        self.attrs
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.as_str())
     }
 }
 
@@ -151,10 +155,14 @@ impl SelectorNode for PathItem {
         &self.tag
     }
     fn has_class(&self, class: &str) -> bool {
-        self.class_attr.split_whitespace().any(|c| c == class)
+        self.get("class")
+            .is_some_and(|c| c.split_whitespace().any(|w| w == class))
     }
     fn id(&self) -> Option<&str> {
-        self.id.as_deref()
+        self.get("id")
+    }
+    fn attr(&self, name: &str) -> Option<&str> {
+        self.get(name)
     }
 }
 

@@ -21,8 +21,7 @@
 //! Entire module lives behind `ts`. Each grammar is a C build via
 //! `cc` — opt-in.
 
-use crate::dom::{Document, ElementData, Node as DomNode, NodeData};
-use std::fmt::Write;
+use crate::dom::{Document, ElementData, Node as DomNode};
 use tree_sitter::{Node, Parser, Tree};
 
 /// Parse TypeScript + JSX (`.tsx` / `.jsx`).

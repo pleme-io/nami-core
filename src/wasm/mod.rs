@@ -155,8 +155,8 @@ impl WasmHost {
 
         // Drop the store so the WASI ctx releases the pipe handle and
         // MemoryOutputPipe::contents() can read a final snapshot.
+        // Instance is Copy; drop(store) alone closes out the lifecycle.
         drop(store);
-        drop(instance);
 
         if let Err(e) = call_result {
             let msg = format!("{e:?}");
@@ -436,11 +436,10 @@ impl WasmHost {
             .map_or(0, |max| max.saturating_sub(store.get_fuel().unwrap_or(0)));
 
         // Extract output BEFORE dropping store; store owns AgentState
-        // which owns the output vec.
+        // which owns the output vec. Instance is Copy; dropping the
+        // store is enough to close the lifecycle cleanly.
         let output = std::mem::take(&mut store.data_mut().cx.output);
-
         drop(store);
-        drop(instance);
 
         if let Err(e) = call_result {
             let msg = format!("{e:?}");

@@ -23,6 +23,7 @@ pub mod layout;
 pub mod lisp;
 pub mod net;
 pub mod plan;
+pub mod predicate;
 pub mod scrape;
 pub mod selector;
 pub mod shadow;

@@ -20,6 +20,8 @@ pub mod config;
 pub mod content;
 pub mod css;
 pub mod dom;
+#[cfg(feature = "eval")]
+pub mod eval;
 pub mod framework;
 pub mod layout;
 pub mod lisp;

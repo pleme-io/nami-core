@@ -13,6 +13,10 @@ network = ["dep:todoku"]
 config = ["dep:shikumi"]
 # Programmable DOM transforms authored as tatara-lisp forms.
 lisp = ["dep:tatara-lisp"]
+# Layer 3 of the React-in-Lisp arc: real Lisp evaluator via
+# pleme-io's tatara-eval. Enables conditionals, arithmetic, string
+# ops, and lambdas inside templates / agent logic.
+eval = ["lisp", "dep:tatara-eval"]
 
 [dependencies]
 html5ever = "0.29"
@@ -22,6 +26,7 @@ taffy = "0.7"
 todoku = { git = "https://github.com/pleme-io/todoku", optional = true }
 shikumi = { git = "https://github.com/pleme-io/shikumi", optional = true }
 tatara-lisp = { git = "ssh://git@github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
+tatara-eval = { git = "ssh://git@github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
 url = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

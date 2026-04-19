@@ -29,6 +29,24 @@ impl Document {
         Self { root: sink.root }
     }
 
+    /// Parse an HTML *fragment* (not a full document) into a flat list of
+    /// top-level nodes. Used by transform actions that splice authored
+    /// HTML into an existing tree (`InsertBefore`, `InsertAfter`,
+    /// `ReplaceWith`).
+    ///
+    /// Wraps the snippet in a dummy `<body>`, parses as a full document,
+    /// then returns the children of that `<body>`. This is simpler than
+    /// html5ever's context-aware `parse_fragment` and sufficient for our
+    /// use (authored snippets rarely need a non-body parse context).
+    #[must_use]
+    pub fn parse_fragment(snippet: &str) -> Vec<Node> {
+        let wrapped = format!("<!DOCTYPE html><html><body>{snippet}</body></html>");
+        let doc = Self::parse(&wrapped);
+        let mut body_children = Vec::new();
+        collect_body_children(&doc.root, &mut body_children);
+        body_children
+    }
+
     /// Find all elements matching a simple selector.
     ///
     /// Supports:
@@ -373,6 +391,21 @@ impl TreeSink for DomSink {
         for child in children {
             this.parents[child] = Some(*new_parent);
             this.child_indices[*new_parent].push(child);
+        }
+    }
+}
+
+fn collect_body_children(node: &Node, out: &mut Vec<Node>) {
+    if let NodeData::Element(el) = &node.data {
+        if el.tag.eq_ignore_ascii_case("body") {
+            out.extend(node.children.iter().cloned());
+            return;
+        }
+    }
+    for child in &node.children {
+        collect_body_children(child, out);
+        if !out.is_empty() {
+            return;
         }
     }
 }

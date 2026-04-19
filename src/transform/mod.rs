@@ -73,6 +73,12 @@ pub enum DomAction {
     SetAttr,
     RemoveAttr,
     SetText,
+    /// Parse `:arg` as an HTML snippet and insert BEFORE each match.
+    InsertBefore,
+    /// Parse `:arg` as an HTML snippet and insert AFTER each match.
+    InsertAfter,
+    /// Parse `:arg` as an HTML snippet and REPLACE each match with it.
+    ReplaceWith,
 }
 
 /// Outcome of applying a batch of transforms.
@@ -239,6 +245,67 @@ fn apply_one(
                 }
             }
         }
+        DomAction::InsertBefore => {
+            let new_nodes = parse_snippet(spec.arg.as_deref());
+            let mut i = 0;
+            while i < node.children.len() {
+                if child_matches(&node.children[i], path, compiled) {
+                    let tag = child_tag(&node.children[i]);
+                    for (j, n) in new_nodes.iter().enumerate() {
+                        node.children.insert(i + j, n.clone());
+                    }
+                    i += new_nodes.len() + 1;
+                    report.applied.push(TransformHit {
+                        transform: spec.name.clone(),
+                        action: spec.action,
+                        tag,
+                    });
+                } else {
+                    i += 1;
+                }
+            }
+        }
+        DomAction::InsertAfter => {
+            let new_nodes = parse_snippet(spec.arg.as_deref());
+            let mut i = 0;
+            while i < node.children.len() {
+                if child_matches(&node.children[i], path, compiled) {
+                    let tag = child_tag(&node.children[i]);
+                    for (j, n) in new_nodes.iter().enumerate() {
+                        node.children.insert(i + 1 + j, n.clone());
+                    }
+                    i += new_nodes.len() + 1;
+                    report.applied.push(TransformHit {
+                        transform: spec.name.clone(),
+                        action: spec.action,
+                        tag,
+                    });
+                } else {
+                    i += 1;
+                }
+            }
+        }
+        DomAction::ReplaceWith => {
+            let new_nodes = parse_snippet(spec.arg.as_deref());
+            let mut i = 0;
+            while i < node.children.len() {
+                if child_matches(&node.children[i], path, compiled) {
+                    let tag = child_tag(&node.children[i]);
+                    node.children.remove(i);
+                    for (j, n) in new_nodes.iter().enumerate() {
+                        node.children.insert(i + j, n.clone());
+                    }
+                    i += new_nodes.len();
+                    report.applied.push(TransformHit {
+                        transform: spec.name.clone(),
+                        action: spec.action,
+                        tag,
+                    });
+                } else {
+                    i += 1;
+                }
+            }
+        }
     }
 
     if pushed {
@@ -323,6 +390,20 @@ fn apply_in_place(node: &mut Node, spec: &DomTransformSpec) -> Option<TransformH
         action: spec.action,
         tag: tag_for_hit,
     })
+}
+
+fn parse_snippet(src: Option<&str>) -> Vec<Node> {
+    match src {
+        Some(s) if !s.trim().is_empty() => Document::parse_fragment(s),
+        _ => Vec::new(),
+    }
+}
+
+fn child_tag(node: &Node) -> String {
+    match &node.data {
+        NodeData::Element(e) => e.tag.clone(),
+        _ => String::new(),
+    }
 }
 
 fn add_class(el: &mut ElementData, class: &str) {
@@ -502,6 +583,119 @@ mod tests {
             .find(|n| n.as_element().is_some_and(|e| e.tag == "h1"))
             .unwrap();
         assert_eq!(h1.text_content(), "new");
+    }
+
+    #[test]
+    fn insert_before_splices_siblings() {
+        let mut doc = parse(r#"<html><body><article><p>body</p></article></body></html>"#);
+        apply(
+            &mut doc,
+            &[spec(
+                "badge",
+                "article",
+                DomAction::InsertBefore,
+                Some(r#"<div class="badge">hi</div>"#),
+            )],
+        );
+        // badge sits before article in body.children.
+        let body = doc
+            .root
+            .descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "body"))
+            .unwrap();
+        assert!(
+            body.children
+                .first()
+                .and_then(|n| n.as_element())
+                .is_some_and(|e| e.tag == "div" && e.has_class("badge"))
+        );
+    }
+
+    #[test]
+    fn insert_after_splices_siblings() {
+        let mut doc = parse(r#"<html><body><h1>t</h1></body></html>"#);
+        apply(
+            &mut doc,
+            &[spec(
+                "estim",
+                "h1",
+                DomAction::InsertAfter,
+                Some(r#"<small class="read-time">2 min read</small>"#),
+            )],
+        );
+        let body = doc
+            .root
+            .descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "body"))
+            .unwrap();
+        assert_eq!(body.children.len(), 2);
+        assert!(
+            body.children[1]
+                .as_element()
+                .is_some_and(|e| e.tag == "small" && e.has_class("read-time"))
+        );
+    }
+
+    #[test]
+    fn replace_with_substitutes_match() {
+        let mut doc = parse(r#"<html><body><p class="ad">ad text</p></body></html>"#);
+        apply(
+            &mut doc,
+            &[spec(
+                "x",
+                ".ad",
+                DomAction::ReplaceWith,
+                Some(r#"<aside class="placeholder">[ad removed]</aside>"#),
+            )],
+        );
+        assert_eq!(count_elements(&doc, "p"), 0);
+        assert_eq!(count_elements(&doc, "aside"), 1);
+    }
+
+    #[test]
+    fn insert_handles_multi_root_snippet() {
+        let mut doc = parse(r#"<html><body><main><p>x</p></main></body></html>"#);
+        apply(
+            &mut doc,
+            &[spec(
+                "multi",
+                "main",
+                DomAction::InsertBefore,
+                Some(r#"<h1>Title</h1><p class="lede">Summary</p>"#),
+            )],
+        );
+        // body.children should be: [h1, p.lede, main].
+        let body = doc
+            .root
+            .descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "body"))
+            .unwrap();
+        assert_eq!(body.children.len(), 3);
+        assert!(body.children[0].as_element().is_some_and(|e| e.tag == "h1"));
+        assert!(
+            body.children[1]
+                .as_element()
+                .is_some_and(|e| e.tag == "p" && e.has_class("lede"))
+        );
+        assert!(
+            body.children[2]
+                .as_element()
+                .is_some_and(|e| e.tag == "main")
+        );
+    }
+
+    #[test]
+    fn insert_empty_snippet_is_no_op() {
+        let mut doc = parse(r#"<html><body><p>x</p></body></html>"#);
+        let report = apply(
+            &mut doc,
+            &[spec("e", "p", DomAction::InsertBefore, Some(""))],
+        );
+        // Empty snippet parses to zero nodes; engine still records a hit
+        // for the matched element (so debugging shows "matched but
+        // spliced nothing"), but the tree shape is unchanged.
+        assert_eq!(count_elements(&doc, "p"), 1);
+        let _ = report;
     }
 
     #[test]

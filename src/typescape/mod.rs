@@ -342,7 +342,7 @@ fn dsl_keywords() -> Vec<DslKeyword> {
         mk("defblocker", "blocker::BlockerSpec",
            "Content blocking rule — domain list for outbound fetches + CSS selectors for DOM strip. Absorbs uBlock/EasyList patterns into the substrate pipeline."),
         mk("defstorage", "storage::kv::StorageSpec",
-           "Typed persistent key/value store with optional TTL. Pure tatara-lisp, append-only event log for persistence, BLAKE3-attestable. Covers cookies/session/user-prefs without FFI."),
+           "Typed persistent key/value store with optional TTL + secondary indexes (:indexes [dot-paths]). Pure tatara-lisp, append-only event log, BLAKE3-attestable. Index lookup is O(log n) via BTreeMap; rebuild on replay keeps on-disk format identical. Covers cookies/session/user-prefs without FFI."),
         mk("defreader", "reader::ReaderSpec",
            "Readability-style simplified view — keep/strip selectors + paragraph-density fallback + title/byline extraction. Absorbs Firefox Reader View + Safari Reader into the substrate pattern."),
         mk("defextension", "extension::ExtensionSpec",

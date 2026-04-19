@@ -66,6 +66,15 @@ pub struct StorageSpec {
     /// Optional per-entry TTL in seconds. `None` = no expiry.
     #[serde(default)]
     pub ttl_seconds: Option<u64>,
+    /// Secondary-index declarations. Each entry is a dot-separated
+    /// JSON path into the stored value (e.g. `"domain"`, `"user.id"`,
+    /// `"tags.0"`). The engine maintains one sorted map per path —
+    /// `by_index(path, value)` returns every key whose value has that
+    /// projected field. Indexes rebuild on journal replay.
+    ///
+    /// Authored as `:indexes ("domain" "expires")` in Lisp.
+    #[serde(default)]
+    pub indexes: Vec<String>,
     #[serde(default)]
     pub description: Option<String>,
 }
@@ -125,6 +134,14 @@ struct StoreInner {
     path: Option<PathBuf>,
     ttl: Option<u64>,
     entries: HashMap<String, Entry>,
+    /// Declared index paths, verbatim from the spec. Shared as the
+    /// key space for `indexes` below; preserved so `by_index_paths`
+    /// can list them without mutating state.
+    index_paths: Vec<String>,
+    /// Secondary indexes: `path → indexed_value (stringified) → set of entry keys`.
+    /// BTreeMap on the middle layer gives deterministic iteration and
+    /// opens the door to range queries on sortable values.
+    indexes: HashMap<String, std::collections::BTreeMap<String, std::collections::HashSet<String>>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -155,12 +172,30 @@ impl Store {
                 }
             }
         }
+        let mut indexes: HashMap<
+            String,
+            std::collections::BTreeMap<String, std::collections::HashSet<String>>,
+        > = HashMap::new();
+        for path in &spec.indexes {
+            indexes.insert(path.clone(), std::collections::BTreeMap::new());
+        }
+        // Rebuild indexes from the replayed entries.
+        for (key, entry) in &entries {
+            for path in &spec.indexes {
+                if let Some(val) = project_value(&entry.value, path) {
+                    let map = indexes.entry(path.clone()).or_default();
+                    map.entry(val).or_default().insert(key.clone());
+                }
+            }
+        }
         Self {
             inner: Arc::new(Mutex::new(StoreInner {
                 name: spec.name.clone(),
                 path: spec.path.clone(),
                 ttl: spec.ttl_seconds,
                 entries,
+                index_paths: spec.indexes.clone(),
+                indexes,
             })),
         }
     }
@@ -169,6 +204,9 @@ impl Store {
         let now = now_secs();
         let key = key.into();
         let mut inner = self.lock();
+        // Evict old index entries before overwriting (the old value
+        // may project to a different indexed slot than the new one).
+        remove_from_indexes(&mut inner, &key);
         inner.entries.insert(
             key.clone(),
             Entry {
@@ -176,6 +214,7 @@ impl Store {
                 ts: now,
             },
         );
+        insert_into_indexes(&mut inner, &key, &value);
         let event = Event::Set { ts: now, key, value };
         if let Some(line) = format_event(&event) {
             append_line(inner.path.as_deref(), &line);
@@ -202,6 +241,7 @@ impl Store {
         let mut inner = self.lock();
         let had = inner.entries.remove(key).is_some();
         if had {
+            remove_from_indexes(&mut inner, key);
             let event = Event::Delete {
                 ts: now,
                 key: key.to_owned(),
@@ -211,6 +251,67 @@ impl Store {
             }
         }
         had
+    }
+
+    /// Keys whose projected value at `index_path` equals `indexed_value`.
+    /// O(log n) lookup instead of O(n) scan — the point of indexes.
+    /// Returns `None` if the index wasn't declared in the spec.
+    #[must_use]
+    pub fn by_index(&self, index_path: &str, indexed_value: &str) -> Option<Vec<(String, Value)>> {
+        let mut inner = self.lock();
+        let ttl = inner.ttl;
+        prune_expired(&mut inner.entries, ttl);
+        let keys: Vec<String> = inner
+            .indexes
+            .get(index_path)?
+            .get(indexed_value)
+            .map(|set| set.iter().cloned().collect())
+            .unwrap_or_default();
+        Some(
+            keys.into_iter()
+                .filter_map(|k| inner.entries.get(&k).map(|e| (k, e.value.clone())))
+                .collect(),
+        )
+    }
+
+    /// Every distinct indexed value for `index_path`, sorted. Useful
+    /// for "show me all domains I have cookies for" style queries.
+    #[must_use]
+    pub fn index_values(&self, index_path: &str) -> Option<Vec<String>> {
+        let inner = self.lock();
+        Some(inner.indexes.get(index_path)?.keys().cloned().collect())
+    }
+
+    /// All declared index paths.
+    #[must_use]
+    pub fn index_paths(&self) -> Vec<String> {
+        self.lock().index_paths.clone()
+    }
+
+    /// Rebuild all indexes from scratch. Useful after direct
+    /// mutation (replay, merge_from, compact). Idempotent.
+    pub fn rebuild_indexes(&self) {
+        let mut inner = self.lock();
+        // Snapshot entries + paths since we need to mutate indexes
+        // while walking entries.
+        let paths = inner.index_paths.clone();
+        let snapshot: Vec<(String, Value)> = inner
+            .entries
+            .iter()
+            .map(|(k, e)| (k.clone(), e.value.clone()))
+            .collect();
+        inner.indexes.clear();
+        for p in &paths {
+            inner.indexes.insert(p.clone(), std::collections::BTreeMap::new());
+        }
+        for (key, val) in &snapshot {
+            for p in &paths {
+                if let Some(v) = project_value(val, p) {
+                    let map = inner.indexes.entry(p.clone()).or_default();
+                    map.entry(v).or_default().insert(key.clone());
+                }
+            }
+        }
     }
 
     /// Live key snapshot — excludes TTL-expired entries.
@@ -397,6 +498,62 @@ impl Store {
     }
 }
 
+// ─── index helpers ───────────────────────────────────────────────
+
+/// Dot-path projection into a JSON value. `"user.id"` walks object
+/// fields; `"tags.0"` indexes into arrays by decimal index. Returns
+/// the projected leaf as a string suitable for BTreeMap lookup.
+/// Non-scalar leaves (objects, arrays, nulls) yield `None`.
+fn project_value(value: &Value, path: &str) -> Option<String> {
+    let mut cursor = value;
+    for segment in path.split('.') {
+        cursor = match cursor {
+            Value::Object(m) => m.get(segment)?,
+            Value::Array(arr) => {
+                let idx: usize = segment.parse().ok()?;
+                arr.get(idx)?
+            }
+            _ => return None,
+        };
+    }
+    match cursor {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(b.to_string()),
+        _ => None,
+    }
+}
+
+fn insert_into_indexes(inner: &mut StoreInner, key: &str, value: &Value) {
+    for path in inner.index_paths.clone() {
+        if let Some(v) = project_value(value, &path) {
+            let map = inner.indexes.entry(path).or_default();
+            map.entry(v).or_default().insert(key.to_owned());
+        }
+    }
+}
+
+fn remove_from_indexes(inner: &mut StoreInner, key: &str) {
+    for (_path, bucket_map) in inner.indexes.iter_mut() {
+        // Every index bucket that contained `key` must drop it; empty
+        // buckets are reaped so `index_values()` doesn't report ghosts.
+        let empty_buckets: Vec<String> = bucket_map
+            .iter_mut()
+            .filter_map(|(indexed_val, keys)| {
+                keys.remove(key);
+                if keys.is_empty() {
+                    Some(indexed_val.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for b in empty_buckets {
+            bucket_map.remove(&b);
+        }
+    }
+}
+
 fn apply_event(entries: &mut HashMap<String, Entry>, ev: Event) {
     match ev {
         Event::Set { ts, key, value } => {
@@ -554,6 +711,17 @@ mod tests {
             name: name.into(),
             path: None,
             ttl_seconds: None,
+            indexes: Vec::new(),
+            description: None,
+        }
+    }
+
+    fn spec_with_indexes(name: &str, indexes: &[&str]) -> StorageSpec {
+        StorageSpec {
+            name: name.into(),
+            path: None,
+            ttl_seconds: None,
+            indexes: indexes.iter().map(|s| (*s).into()).collect(),
             description: None,
         }
     }
@@ -917,5 +1085,194 @@ mod tests {
             Some("/tmp/cookies.log")
         );
         assert_eq!(specs[0].ttl_seconds, Some(3600));
+    }
+
+    // ── Secondary indexes ───────────────────────────────────────────
+
+    #[test]
+    fn index_paths_reflect_spec() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["domain", "user.id"]));
+        let mut paths = s.index_paths();
+        paths.sort();
+        assert_eq!(paths, vec!["domain".to_owned(), "user.id".to_owned()]);
+    }
+
+    #[test]
+    fn by_index_returns_none_for_undeclared_path() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["domain"]));
+        s.set("k1", json!({"domain": "example.com"}));
+        // Path wasn't declared → None, not an empty Vec.
+        assert!(s.by_index("nonexistent", "foo").is_none());
+        // Declared but no match → empty Vec.
+        assert_eq!(s.by_index("domain", "example.com").unwrap().len(), 1);
+        assert_eq!(s.by_index("domain", "missing.com").unwrap().len(), 0);
+    }
+
+    #[test]
+    fn by_index_groups_keys_sharing_a_projected_value() {
+        let s = Store::from_spec(&spec_with_indexes("cookies", &["domain"]));
+        s.set("cookie/1", json!({"domain": "example.com", "name": "a"}));
+        s.set("cookie/2", json!({"domain": "example.com", "name": "b"}));
+        s.set("cookie/3", json!({"domain": "other.com", "name": "c"}));
+
+        let hits = s.by_index("domain", "example.com").unwrap();
+        let keys: std::collections::HashSet<String> =
+            hits.iter().map(|(k, _)| k.clone()).collect();
+        assert_eq!(keys.len(), 2);
+        assert!(keys.contains("cookie/1"));
+        assert!(keys.contains("cookie/2"));
+
+        let others = s.by_index("domain", "other.com").unwrap();
+        assert_eq!(others.len(), 1);
+        assert_eq!(others[0].0, "cookie/3");
+    }
+
+    #[test]
+    fn index_updates_on_set_of_changed_projection() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["tier"]));
+        s.set("u/1", json!({"tier": "free"}));
+        assert_eq!(s.by_index("tier", "free").unwrap().len(), 1);
+        // Reassign same key → old bucket must empty, new one populate.
+        s.set("u/1", json!({"tier": "paid"}));
+        assert_eq!(s.by_index("tier", "free").unwrap().len(), 0);
+        assert_eq!(s.by_index("tier", "paid").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn index_drops_key_on_delete() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["tier"]));
+        s.set("u/1", json!({"tier": "free"}));
+        s.set("u/2", json!({"tier": "free"}));
+        assert_eq!(s.by_index("tier", "free").unwrap().len(), 2);
+        s.delete("u/1");
+        assert_eq!(s.by_index("tier", "free").unwrap().len(), 1);
+        s.delete("u/2");
+        // Bucket must be reaped so the distinct-value list is accurate.
+        assert_eq!(s.by_index("tier", "free").unwrap().len(), 0);
+        assert!(s.index_values("tier").unwrap().is_empty());
+    }
+
+    #[test]
+    fn index_values_returns_sorted_distinct_list() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["domain"]));
+        s.set("c/1", json!({"domain": "b.com"}));
+        s.set("c/2", json!({"domain": "a.com"}));
+        s.set("c/3", json!({"domain": "b.com"}));
+        let vals = s.index_values("domain").unwrap();
+        assert_eq!(vals, vec!["a.com".to_owned(), "b.com".to_owned()]);
+    }
+
+    #[test]
+    fn nested_dot_path_projects_through_objects() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["user.id"]));
+        s.set("s/1", json!({"user": {"id": "alice"}}));
+        s.set("s/2", json!({"user": {"id": "bob"}}));
+        let hits = s.by_index("user.id", "alice").unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].0, "s/1");
+    }
+
+    #[test]
+    fn array_index_projects_by_decimal_subscript() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["tags.0"]));
+        s.set("p/1", json!({"tags": ["rust", "web"]}));
+        s.set("p/2", json!({"tags": ["browser", "ui"]}));
+        let hits = s.by_index("tags.0", "rust").unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].0, "p/1");
+    }
+
+    #[test]
+    fn non_scalar_leaf_is_skipped_from_index() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["nested"]));
+        // Value at `nested` is an object → not indexable.
+        s.set("k", json!({"nested": {"deep": "value"}}));
+        // Index is empty because the projected leaf wasn't a scalar.
+        assert!(s.index_values("nested").unwrap().is_empty());
+    }
+
+    #[test]
+    fn integer_and_bool_projections_stringify_deterministically() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["age", "active"]));
+        s.set("u/1", json!({"age": 30, "active": true}));
+        s.set("u/2", json!({"age": 30, "active": false}));
+        assert_eq!(s.by_index("age", "30").unwrap().len(), 2);
+        assert_eq!(s.by_index("active", "true").unwrap().len(), 1);
+        assert_eq!(s.by_index("active", "false").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn indexes_rebuild_from_replay() {
+        let path = tmp_path("index-replay");
+        let sp = StorageSpec {
+            path: Some(path.clone()),
+            indexes: vec!["domain".into()],
+            ..spec("x")
+        };
+        {
+            let s = Store::from_spec(&sp);
+            s.set("c/1", json!({"domain": "example.com"}));
+            s.set("c/2", json!({"domain": "example.com"}));
+            s.set("c/3", json!({"domain": "other.com"}));
+        }
+        // Reopen → indexes must rebuild identically from the journal.
+        let s = Store::from_spec(&sp);
+        assert_eq!(s.by_index("domain", "example.com").unwrap().len(), 2);
+        assert_eq!(s.by_index("domain", "other.com").unwrap().len(), 1);
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn rebuild_indexes_is_idempotent() {
+        let s = Store::from_spec(&spec_with_indexes("x", &["domain"]));
+        s.set("c/1", json!({"domain": "a"}));
+        s.set("c/2", json!({"domain": "b"}));
+        let before = (
+            s.by_index("domain", "a").unwrap().len(),
+            s.by_index("domain", "b").unwrap().len(),
+        );
+        s.rebuild_indexes();
+        let after = (
+            s.by_index("domain", "a").unwrap().len(),
+            s.by_index("domain", "b").unwrap().len(),
+        );
+        assert_eq!(before, after);
+    }
+
+    #[test]
+    fn store_without_indexes_reports_empty_paths() {
+        let s = Store::from_spec(&spec("x"));
+        assert!(s.index_paths().is_empty());
+        assert!(s.by_index("anything", "x").is_none());
+    }
+
+    #[test]
+    fn perf_index_lookup_beats_linear_filter_at_10k() {
+        // Sanity check that index lookup stays O(log n).
+        let s = Store::from_spec(&spec_with_indexes("perf", &["domain"]));
+        for i in 0..10_000 {
+            let dom = if i % 100 == 0 { "hot.com" } else { "cold.com" };
+            s.set(format!("k{i}"), json!({"domain": dom}));
+        }
+        let start = std::time::Instant::now();
+        let hot = s.by_index("domain", "hot.com").unwrap();
+        let dt = start.elapsed();
+        assert_eq!(hot.len(), 100);
+        // Generous bound — CI hosts are slow — but still orders of
+        // magnitude below O(n) JSON walks.
+        assert!(dt < std::time::Duration::from_millis(100), "elapsed: {dt:?}");
+    }
+
+    #[cfg(feature = "lisp")]
+    #[test]
+    fn compile_parses_indexes() {
+        let src = r#"
+            (defstorage :name "cookies"
+                        :ttl-seconds 86400
+                        :indexes ("domain" "user.id"))
+        "#;
+        let specs = compile(src).unwrap();
+        assert_eq!(specs.len(), 1);
+        assert_eq!(specs[0].indexes, vec!["domain", "user.id"]);
     }
 }

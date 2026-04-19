@@ -15,6 +15,8 @@
 
 pub mod agent;
 pub mod alias;
+#[cfg(feature = "ts")]
+pub mod ast;
 pub mod component;
 pub mod config;
 pub mod content;

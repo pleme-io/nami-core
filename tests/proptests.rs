@@ -164,6 +164,35 @@ proptest! {
 use nami_core::framework::{Detection, Framework};
 use nami_core::normalize::{NormalizeRegistry, NormalizeSpec};
 
+/// Walk a sexp string counting `(` and `)` that appear at structural
+/// positions — outside `"..."` string literals. Our escape set matches
+/// what `ast::write_quoted` emits (`\"`, `\\`, `\n`, `\r`, `\t`).
+#[cfg(feature = "ts")]
+fn count_structural_parens(s: &str) -> (usize, usize) {
+    let mut opens = 0usize;
+    let mut closes = 0usize;
+    let mut in_string = false;
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if in_string {
+            if c == '\\' {
+                // Skip escaped char.
+                chars.next();
+            } else if c == '"' {
+                in_string = false;
+            }
+        } else {
+            match c {
+                '"' => in_string = true,
+                '(' => opens += 1,
+                ')' => closes += 1,
+                _ => {}
+            }
+        }
+    }
+    (opens, closes)
+}
+
 fn arb_tag() -> impl Strategy<Value = String> {
     prop_oneof![
         Just("article".to_owned()),
@@ -328,7 +357,60 @@ proptest! {
         prop_assert!(text.contains(&inner), "text content {:?} lost original body {:?}", text, inner);
     }
 
-    // P6. Framework detection string matching is total for named
+    // P6.5. Tree-sitter TSX parser invariants (feature-gated).
+    #[cfg(feature = "ts")]
+    #[test]
+    fn tsx_parser_never_panics(s in "\\PC{0,400}") {
+        let _ = nami_core::ast::parse_tsx(&s);
+    }
+
+    #[cfg(feature = "ts")]
+    #[test]
+    fn tsx_output_parens_balanced(s in "\\PC{0,400}") {
+        let Ok(out) = nami_core::ast::parse_tsx(&s) else {
+            return Ok(());
+        };
+        // Count STRUCTURAL parens — skip anything inside "..." strings,
+        // since source-text leaves legitimately include paren chars.
+        let (opens, closes) = count_structural_parens(&out);
+        prop_assert_eq!(opens, closes, "sexp parens unbalanced: {}", out);
+    }
+
+    #[cfg(feature = "ts")]
+    #[test]
+    fn tsx_parse_is_deterministic(s in "\\PC{0,400}") {
+        let Ok(a) = nami_core::ast::parse_tsx(&s) else {
+            return Ok(());
+        };
+        let b = nami_core::ast::parse_tsx(&s).expect("second parse");
+        prop_assert_eq!(a, b);
+    }
+
+    #[cfg(feature = "ts")]
+    #[test]
+    fn tsx_every_sexp_has_at_least_one_node(s in "\\PC{0,200}") {
+        let Ok(out) = nami_core::ast::parse_tsx(&s) else {
+            return Ok(());
+        };
+        // Even empty source yields one (program) node.
+        prop_assert!(nami_core::ast::count_ts_nodes(&out) >= 1);
+    }
+
+    #[cfg(feature = "ts")]
+    #[test]
+    fn simple_jsx_element_always_has_opening_and_closing(
+        tag in "[a-z]{1,8}",
+        body in "[a-z0-9 ]{0,30}",
+    ) {
+        let src = format!("const x = <{tag}>{body}</{tag}>;");
+        let out = nami_core::ast::parse_tsx(&src).expect("parse");
+        let opens = out.matches(":kind \"jsx_opening_element\"").count();
+        let closes = out.matches(":kind \"jsx_closing_element\"").count();
+        prop_assert_eq!(opens, 1, "expected exactly 1 opening, got {}; src: {:?}", opens, src);
+        prop_assert_eq!(closes, 1, "expected exactly 1 closing, got {}; src: {:?}", closes, src);
+    }
+
+    // P7. Framework detection string matching is total for named
     // variants — for every Framework::* enum variant we can construct,
     // a rule gated on its canonical name matches.
     #[test]

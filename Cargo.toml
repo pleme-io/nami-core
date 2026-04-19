@@ -17,6 +17,10 @@ lisp = ["dep:tatara-lisp"]
 # pleme-io's tatara-eval. Enables conditionals, arithmetic, string
 # ops, and lambdas inside templates / agent logic.
 eval = ["lisp", "dep:tatara-eval"]
+# Tree-sitter source-language parsing. JSX/TSX today; Vue/Svelte
+# queued. Each grammar compiles C via `cc`, so this feature adds
+# real compile time — off by default.
+ts = ["dep:tree-sitter", "dep:tree-sitter-typescript"]
 
 [dependencies]
 html5ever = "0.29"
@@ -34,6 +38,9 @@ tracing = "0.1"
 thiserror = "2"
 # Content-addressable snapshots. Same BLAKE3 convention as tameshi.
 blake3 = "1.8"
+# Source-language parsing (JSX/TSX/Vue/Svelte). Feature-gated.
+tree-sitter = { version = "0.25", optional = true }
+tree-sitter-typescript = { version = "0.23", optional = true }
 
 [dev-dependencies]
 # Property-based testing — fuzzes parsers + invariants across

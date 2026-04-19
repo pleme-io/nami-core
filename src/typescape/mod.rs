@@ -347,6 +347,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Readability-style simplified view — keep/strip selectors + paragraph-density fallback + title/byline extraction. Absorbs Firefox Reader View + Safari Reader into the substrate pattern."),
         mk("defextension", "extension::ExtensionSpec",
            "Browser-extension bundle — metadata, permissions, host-permissions, and ownership of other def* forms. Absorbs Chrome MV3 + Firefox WebExtensions + Safari App Extensions. Decentralized store: BLAKE3 content address + ed25519 author signature."),
+        mk("defcommand", "command::CommandSpec",
+           "Named unit of behavior — built-in verb via :action, or tatara-lisp body via :do. Invokable by key, menu, MCP tool, or HTTP. Absorbs Chrome/Firefox commands API, Vivaldi command-chains, Arc toolbar-shortcut authoring."),
+        mk("defbind", "command::BindSpec",
+           "Key chord / multi-key sequence → command mapping, with Vim-style mode scoping (normal/insert/visual/any) and optional predicate gate. Full Lisp programmability; ships with a default vim-mode pack."),
     ]
 }
 
@@ -488,8 +492,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            18,
-            "18 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            20,
+            "20 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -612,7 +616,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        18"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        20"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

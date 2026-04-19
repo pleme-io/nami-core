@@ -21,6 +21,7 @@
 //! Entire module lives behind `ts`. Each grammar is a C build via
 //! `cc` — opt-in.
 
+use crate::dom::{Document, ElementData, Node as DomNode, NodeData};
 use std::fmt::Write;
 use tree_sitter::{Node, Parser, Tree};
 
@@ -124,6 +125,190 @@ fn write_quoted(out: &mut String, s: &str) {
 /// Cap how much source text we inline as `:text`. Prevents a single
 /// huge leaf (e.g. a giant string literal) from ballooning the sexp.
 const MAX_LEAF_TEXT_BYTES: usize = 256;
+
+/// Parse TSX source and **project it into a `Document`** — JSX
+/// elements become real DOM elements, attributes become element
+/// attributes, JSX text becomes text nodes. Everything else (ts
+/// imports, function bodies, non-JSX expressions) is dropped.
+///
+/// This lets `(defnormalize)` / `(defdom-transform)` / `(defscrape)`
+/// and every other DOM-targeted DSL operate on JSX source unchanged.
+/// A rule like `(defnormalize :selector "article" :rename-to
+/// "n-article")` folds both `<article>` in HTML AND `<article>` in a
+/// `.tsx` file.
+///
+/// Non-JSX top-level code (imports, type defs, unrelated statements)
+/// gets skipped; the returned Document contains just the JSX subtree(s).
+pub fn parse_tsx_as_document(source: &str) -> Result<Document, String> {
+    let language = tree_sitter_typescript::LANGUAGE_TSX;
+    let mut parser = Parser::new();
+    parser
+        .set_language(&language.into())
+        .map_err(|e| format!("set tsx language: {e}"))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| "tree-sitter: parse returned None".to_owned())?;
+
+    let mut doc = Document {
+        root: DomNode::document(),
+    };
+    walk_into_dom(&tree.root_node(), source, &mut doc.root.children);
+    Ok(doc)
+}
+
+fn walk_into_dom(node: &Node, source: &str, out: &mut Vec<DomNode>) {
+    match node.kind() {
+        "jsx_element" => {
+            if let Some(el) = jsx_element_to_dom(node, source) {
+                out.push(el);
+            }
+        }
+        "jsx_self_closing_element" => {
+            if let Some(el) = jsx_self_closing_to_dom(node, source) {
+                out.push(el);
+            }
+        }
+        _ => {
+            // Walk children — a JSX tree may be buried inside a
+            // variable declarator, return statement, etc.
+            for i in 0..node.child_count() {
+                if let Some(child) = node.child(i) {
+                    walk_into_dom(&child, source, out);
+                }
+            }
+        }
+    }
+}
+
+fn jsx_element_to_dom(node: &Node, source: &str) -> Option<DomNode> {
+    // Find opening, closing, and child JSX content.
+    let mut opening: Option<Node> = None;
+    let mut children: Vec<DomNode> = Vec::new();
+
+    for i in 0..node.child_count() {
+        let child = node.child(i)?;
+        match child.kind() {
+            "jsx_opening_element" => opening = Some(child),
+            "jsx_closing_element" => {}
+            "jsx_element" | "jsx_self_closing_element" => {
+                let mut bucket = Vec::new();
+                walk_into_dom(&child, source, &mut bucket);
+                children.extend(bucket);
+            }
+            "jsx_text" => {
+                if let Some(text) = source.get(child.byte_range()) {
+                    let trimmed = text.trim();
+                    if !trimmed.is_empty() {
+                        children.push(DomNode::text(trimmed.to_owned()));
+                    }
+                }
+            }
+            "jsx_expression" => {
+                // `{expr}` — preserve the source text so scrapes can
+                // still see "{count}" if they want to. Skip the outer
+                // braces to keep output clean.
+                if let Some(text) = source.get(child.byte_range()) {
+                    let t = text.trim();
+                    if !t.is_empty() {
+                        children.push(DomNode::text(t.to_owned()));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let (tag, attrs) = parse_opening_tag(&opening?, source)?;
+    let mut el = ElementData::with_attributes(tag, attrs);
+    // Record provenance — every JSX-derived element is tagged so
+    // downstream tools can distinguish source-language origins.
+    el.attributes
+        .push(("data-ast-source".to_owned(), "jsx".to_owned()));
+    let mut node = DomNode::element(el);
+    node.children = children;
+    Some(node)
+}
+
+fn jsx_self_closing_to_dom(node: &Node, source: &str) -> Option<DomNode> {
+    let (tag, attrs) = parse_self_closing_tag(node, source)?;
+    let mut el = ElementData::with_attributes(tag, attrs);
+    el.attributes
+        .push(("data-ast-source".to_owned(), "jsx".to_owned()));
+    Some(DomNode::element(el))
+}
+
+fn parse_opening_tag(node: &Node, source: &str) -> Option<(String, Vec<(String, String)>)> {
+    let mut tag: Option<String> = None;
+    let mut attrs: Vec<(String, String)> = Vec::new();
+    for i in 0..node.child_count() {
+        let child = node.child(i)?;
+        match child.kind() {
+            "identifier" | "nested_identifier" | "member_expression" => {
+                if tag.is_none() {
+                    if let Some(text) = source.get(child.byte_range()) {
+                        tag = Some(text.trim().to_owned());
+                    }
+                }
+            }
+            "jsx_attribute" => {
+                if let Some(pair) = extract_attribute(&child, source) {
+                    attrs.push(pair);
+                }
+            }
+            _ => {}
+        }
+    }
+    Some((tag.unwrap_or_else(|| "jsx".to_owned()), attrs))
+}
+
+fn parse_self_closing_tag(node: &Node, source: &str) -> Option<(String, Vec<(String, String)>)> {
+    // Same shape as an opening tag — tree-sitter treats the whole
+    // self-closing element as the "opening" unit.
+    parse_opening_tag(node, source)
+}
+
+fn extract_attribute(node: &Node, source: &str) -> Option<(String, String)> {
+    let mut name: Option<String> = None;
+    let mut value: String = String::new();
+    for i in 0..node.child_count() {
+        let child = node.child(i)?;
+        match child.kind() {
+            "property_identifier" | "jsx_namespace_name" | "identifier" => {
+                if name.is_none() {
+                    if let Some(text) = source.get(child.byte_range()) {
+                        name = Some(text.trim().to_owned());
+                    }
+                }
+            }
+            "string" => {
+                if let Some(text) = source.get(child.byte_range()) {
+                    // Strip surrounding quotes.
+                    let trimmed = text.trim();
+                    let inner = trimmed
+                        .strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+                        .or_else(|| trimmed.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+                        .unwrap_or(trimmed);
+                    value = inner.to_owned();
+                }
+            }
+            "jsx_expression" => {
+                // `attr={expr}` — keep the source text (minus braces)
+                // so downstream queries can see the variable reference.
+                if let Some(text) = source.get(child.byte_range()) {
+                    let trimmed = text.trim();
+                    let inner = trimmed
+                        .strip_prefix('{')
+                        .and_then(|s| s.strip_suffix('}'))
+                        .unwrap_or(trimmed)
+                        .trim();
+                    value = inner.to_owned();
+                }
+            }
+            _ => {}
+        }
+    }
+    Some((name?, value))
+}
 
 /// Count every `(ts-node …)` form in a sexp string. Used for
 /// proptest invariants: `count(sexp) == tree.root_node().descendant_count()`.
@@ -297,6 +482,142 @@ mod tests {
         // → jsx_element → {opening, text, closing} + identifiers. Well
         // north of 5 nodes for even the tiniest JSX snippet.
         assert!(n >= 5, "expected >= 5 ts-nodes, got {n}; sexp: {out}");
+    }
+
+    // ── JSX → Document mapping ────────────────────────────────────
+
+    #[test]
+    fn parse_tsx_as_document_extracts_jsx_tree() {
+        let src = "const x = <article><p>hi</p></article>;";
+        let doc = parse_tsx_as_document(src).expect("parse");
+        let mut saw_article = false;
+        let mut saw_p = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                match el.tag.as_str() {
+                    "article" => {
+                        saw_article = true;
+                        assert_eq!(el.get_attribute("data-ast-source"), Some("jsx"));
+                    }
+                    "p" => {
+                        saw_p = true;
+                        assert_eq!(n.text_content(), "hi");
+                    }
+                    _ => {}
+                }
+            }
+        }
+        assert!(saw_article && saw_p);
+    }
+
+    #[test]
+    fn jsx_attributes_map_to_element_attributes() {
+        let src = r#"const x = <a href="/h" class="c" data-slot="card">yo</a>;"#;
+        let doc = parse_tsx_as_document(src).expect("parse");
+        let a = doc.root.descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "a"))
+            .expect("found <a>");
+        let el = a.as_element().unwrap();
+        assert_eq!(el.get_attribute("href"), Some("/h"));
+        assert_eq!(el.get_attribute("class"), Some("c"));
+        assert_eq!(el.get_attribute("data-slot"), Some("card"));
+        assert_eq!(el.get_attribute("data-ast-source"), Some("jsx"));
+    }
+
+    #[test]
+    fn jsx_self_closing_element_parses_as_empty_element() {
+        let src = r#"const x = <img src="/a.png" alt="pic" />;"#;
+        let doc = parse_tsx_as_document(src).expect("parse");
+        let img = doc.root.descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "img"))
+            .expect("found <img>");
+        let el = img.as_element().unwrap();
+        assert_eq!(el.get_attribute("src"), Some("/a.png"));
+        assert_eq!(el.get_attribute("alt"), Some("pic"));
+        assert!(img.children.is_empty());
+    }
+
+    #[test]
+    fn same_normalize_rule_applies_to_jsx_and_html() {
+        // THE SHIP: one (defnormalize) rule folds article→n-article
+        // regardless of whether source was HTML or JSX.
+        use crate::normalize::{apply, NormalizeRegistry, NormalizeSpec};
+
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "article".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        // HTML source.
+        let mut html_doc = Document::parse("<html><body><article>x</article></body></html>");
+        let html_report = apply(&mut html_doc, &reg, &[]);
+
+        // JSX source — same logical structure.
+        let mut jsx_doc = parse_tsx_as_document("const x = <article>x</article>;").expect("parse");
+        let jsx_report = apply(&mut jsx_doc, &reg, &[]);
+
+        assert_eq!(html_report.applied(), 1, "html normalize");
+        assert_eq!(jsx_report.applied(), 1, "jsx normalize");
+
+        // Both now have a canonical n-article element.
+        assert!(jsx_doc.root.descendants().any(|n| {
+            n.as_element().is_some_and(|e| e.tag == "n-article")
+        }));
+    }
+
+    #[test]
+    fn empty_source_yields_empty_document() {
+        let doc = parse_tsx_as_document("").expect("parse");
+        // Root is a Document node with zero children (no JSX).
+        assert_eq!(doc.root.children.len(), 0);
+    }
+
+    #[test]
+    fn non_jsx_code_yields_empty_document() {
+        let doc = parse_tsx_as_document("const x = 1 + 2;").expect("parse");
+        assert_eq!(doc.root.children.len(), 0);
+    }
+
+    #[test]
+    fn nested_jsx_preserves_depth_in_dom() {
+        let src = "const x = <a><b><c>deep</c></b></a>;";
+        let doc = parse_tsx_as_document(src).expect("parse");
+        // Walk: root → a → b → c → text("deep")
+        let a = &doc.root.children[0];
+        assert_eq!(a.as_element().unwrap().tag, "a");
+        let b = &a.children[0];
+        assert_eq!(b.as_element().unwrap().tag, "b");
+        let c = &b.children[0];
+        assert_eq!(c.as_element().unwrap().tag, "c");
+        assert_eq!(c.text_content(), "deep");
+    }
+
+    #[test]
+    fn jsx_expression_interpolation_preserved_as_text() {
+        let src = "const x = <p>{count}</p>;";
+        let doc = parse_tsx_as_document(src).expect("parse");
+        let p = doc.root.descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "p"))
+            .expect("found <p>");
+        assert!(p.text_content().contains("count"));
+    }
+
+    #[test]
+    fn attribute_expression_value_preserved_as_string() {
+        let src = r#"const x = <div id={main} class={variant}>x</div>;"#;
+        let doc = parse_tsx_as_document(src).expect("parse");
+        let div = doc.root.descendants()
+            .find(|n| n.as_element().is_some_and(|e| e.tag == "div"))
+            .unwrap();
+        let el = div.as_element().unwrap();
+        assert_eq!(el.get_attribute("id"), Some("main"));
+        assert_eq!(el.get_attribute("class"), Some("variant"));
     }
 
     // ── Determinism ───────────────────────────────────────────────

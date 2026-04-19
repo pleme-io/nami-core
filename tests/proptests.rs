@@ -410,6 +410,62 @@ proptest! {
         prop_assert_eq!(closes, 1, "expected exactly 1 closing, got {}; src: {:?}", closes, src);
     }
 
+    // P7. JSX → Document round-trips — for any well-formed simple JSX
+    // element, parse_tsx_as_document produces exactly one DOM element
+    // with the expected tag and text, and the data-ast-source marker
+    // is always set.
+    #[cfg(feature = "ts")]
+    #[test]
+    fn parse_tsx_as_document_matches_simple_jsx(
+        tag in "[a-z]{1,8}",
+        body in "[a-z0-9 ]{1,30}",
+    ) {
+        let src = format!("const x = <{tag}>{body}</{tag}>;");
+        let doc = nami_core::ast::parse_tsx_as_document(&src).expect("parse");
+
+        let elements: Vec<_> = doc.root.descendants()
+            .filter_map(|n| n.as_element())
+            .collect();
+        prop_assert_eq!(elements.len(), 1, "expected 1 element; src: {:?}", src);
+        let el = elements[0];
+        prop_assert_eq!(&el.tag, &tag);
+        prop_assert_eq!(
+            el.get_attribute("data-ast-source").map(str::to_owned),
+            Some("jsx".to_owned())
+        );
+    }
+
+    // P8. A normalize rule matching by tag name folds BOTH HTML and
+    // equivalent JSX into the same canonical form.
+    #[cfg(feature = "ts")]
+    #[test]
+    fn normalize_is_source_agnostic_across_html_and_jsx(
+        tag in "[a-z]{2,6}",
+    ) {
+        use nami_core::normalize::{apply, NormalizeRegistry, NormalizeSpec};
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "t".into(),
+            framework: None,
+            selector: tag.clone(),
+            rename_to: format!("n-{tag}"),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+
+        let html_src = format!("<html><body><{tag}>x</{tag}></body></html>");
+        let jsx_src = format!("const x = <{tag}>x</{tag}>;");
+
+        let mut html_doc = nami_core::dom::Document::parse(&html_src);
+        let html_hits = apply(&mut html_doc, &reg, &[]).applied();
+
+        let mut jsx_doc = nami_core::ast::parse_tsx_as_document(&jsx_src).expect("parse");
+        let jsx_hits = apply(&mut jsx_doc, &reg, &[]).applied();
+
+        prop_assert_eq!(html_hits, jsx_hits, "tag={:?}", tag);
+    }
+
     // P7. Framework detection string matching is total for named
     // variants — for every Framework::* enum variant we can construct,
     // a rule gated on its canonical name matches.

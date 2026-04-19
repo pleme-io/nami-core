@@ -4,35 +4,39 @@
 //! downstream transforms, scrapes, agents, and tooling author against
 //! ONE shape instead of React vs Vue vs Svelte vs shadcn vs MUI vs …
 //!
-//! ## V1 surface
+//! ## Surface
 //!
 //! A normalize spec matches elements via a selector, optionally gated
-//! by a detected framework, and renames matches to a canonical tag:
+//! by a detected framework, and rewrites matches:
+//!
+//! | field             | effect                                          |
+//! | ----------------- | ----------------------------------------------- |
+//! | `:rename-to`      | new tag name (required)                         |
+//! | `:set-attrs`      | list of `(KEY VALUE)` pairs to add/overwrite    |
+//! | `:remove-attrs`   | list of attribute names to strip                |
+//! | `:framework`      | only fire when detection matches                |
 //!
 //! ```lisp
-//! (defnormalize :name "shadcn-card"
+//! ;; Inbound fold: shadcn → canonical.
+//! (defnormalize :name "shadcn-card-in"
 //!               :framework "shadcn"
 //!               :selector "[data-slot=card]"
 //!               :rename-to "n-card")
 //!
-//! (defnormalize :name "mui-card"
-//!               :framework "mui"
-//!               :selector ".MuiCard-root"
-//!               :rename-to "n-card")
+//! ;; Outbound emit: canonical → shadcn-shaped DOM.
+//! (defnormalize :name "shadcn-card-out"
+//!               :selector "n-card"
+//!               :rename-to "div"
+//!               :set-attrs (("data-slot" "card")))
 //!
-//! (defnormalize :name "generic-article"
-//!               :selector "article"
-//!               :rename-to "n-article")
+//! ;; Strip framework-specific debris after normalization.
+//! (defnormalize :name "strip-mui-debris"
+//!               :selector "[data-n-rule=mui-card]"
+//!               :remove-attrs ("data-testid"))
 //! ```
 //!
-//! Downstream tools now only need to know `n-card` / `n-article` —
-//! every page, regardless of framework, yields the same semantic DOM.
-//!
-//! ## V2 (not yet)
-//!
-//! Richer rewrites: `:title-from` / `:body-from` extraction into
-//! canonical attributes, `:wrap-in` for structural insertion,
-//! `:emit-subtree` for full template replacement.
+//! Run a pair of `*-in` + `*-out` rule sets and you get framework
+//! conversion: `<article>` → `n-article` → `<div data-slot=article>`.
 
 use crate::dom::{Document, ElementData, Node, NodeData};
 use crate::framework::Detection;
@@ -58,6 +62,14 @@ pub struct NormalizeSpec {
     /// New tag name for every matching element. Convention: `n-*` for
     /// semantic canonical tags (`n-card`, `n-article`, `n-nav`).
     pub rename_to: String,
+    /// Attributes to add or overwrite on every rewritten element.
+    /// Enables outbound emit patterns (canonical → framework-shaped):
+    /// `:set-attrs (("data-slot" "card") ("role" "article"))`.
+    #[serde(default)]
+    pub set_attrs: Vec<(String, String)>,
+    /// Attributes to strip from every rewritten element.
+    #[serde(default)]
+    pub remove_attrs: Vec<String>,
     #[serde(default)]
     pub description: Option<String>,
 }
@@ -193,13 +205,22 @@ fn rewrite(
     // expects the element-under-test to be the last context item.
     if let NodeData::Element(el) = &mut node.data {
         let full: Vec<&OwnedContext> = path.iter().collect();
-        if selector.matches(&full) && el.tag != spec.rename_to {
+        let matched = selector.matches(&full);
+        let needs_rename = el.tag != spec.rename_to;
+        let has_attr_work = !spec.set_attrs.is_empty() || !spec.remove_attrs.is_empty();
+        if matched && (needs_rename || has_attr_work) {
             let from = el.tag.clone();
-            el.tag = spec.rename_to.clone();
-            // Stamp a tracking attribute so downstream tooling can
-            // identify canonicalised elements without a second detect pass.
-            set_attr(el, "data-n-from", &from);
-            set_attr(el, "data-n-rule", &spec.name);
+            if needs_rename {
+                el.tag = spec.rename_to.clone();
+                set_attr(el, "data-n-from", &from);
+                set_attr(el, "data-n-rule", &spec.name);
+            }
+            for name in &spec.remove_attrs {
+                el.attributes.retain(|(k, _)| k != name);
+            }
+            for (k, v) in &spec.set_attrs {
+                set_attr(el, k, v);
+            }
             report.hits.push(NormalizeHit {
                 rule: spec.name.clone(),
                 from_tag: from,
@@ -251,6 +272,8 @@ mod tests {
             framework: None,
             selector: "article".into(),
             rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         let mut doc = Document::parse("<html><body><article><p>hi</p></article></body></html>");
@@ -280,6 +303,8 @@ mod tests {
             framework: Some("shadcn".into()),
             selector: "[data-slot=card]".into(),
             rename_to: "n-card".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         let mut doc = Document::parse(r#"<html><body><div data-slot="card">x</div></body></html>"#);
@@ -308,6 +333,8 @@ mod tests {
             framework: None,
             selector: "article".into(),
             rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         let mut doc = Document::parse("<html><body><article>x</article></body></html>");
@@ -330,6 +357,8 @@ mod tests {
             framework: Some("shadcn/radix".into()),
             selector: "[data-slot=card]".into(),
             rename_to: "n-card".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         reg.insert(NormalizeSpec {
@@ -337,6 +366,8 @@ mod tests {
             framework: Some("shadcn".into()),
             selector: "[data-slot=tab]".into(),
             rename_to: "n-tab".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         let det = vec![Detection {
@@ -364,6 +395,8 @@ mod tests {
             framework: None,
             selector: "article".into(),
             rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         reg.insert(NormalizeSpec {
@@ -371,6 +404,8 @@ mod tests {
             framework: None,
             selector: "nav".into(),
             rename_to: "n-nav".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         let mut doc = Document::parse(
@@ -396,6 +431,8 @@ mod tests {
             framework: None,
             selector: "section".into(),
             rename_to: "n-section".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
             description: None,
         });
         let mut doc = Document::parse(
@@ -444,5 +481,159 @@ mod tests {
         assert_eq!(specs[0].name, "mui-card");
         assert_eq!(specs[0].framework.as_deref(), Some("mui"));
         assert_eq!(specs[0].rename_to, "n-card");
+    }
+
+    #[test]
+    fn set_attrs_adds_new_attribute_on_rewrite() {
+        // Outbound emit pattern: canonical n-card → shadcn-shaped div.
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "emit-shadcn-card".into(),
+            framework: None,
+            selector: "n-card".into(),
+            rename_to: "div".into(),
+            set_attrs: vec![
+                ("data-slot".into(), "card".into()),
+                ("role".into(), "article".into()),
+            ],
+            remove_attrs: vec![],
+            description: None,
+        });
+        let mut doc = Document::parse("<html><body><n-card>x</n-card></body></html>");
+        let report = apply(&mut doc, &reg, &no_detections());
+        assert_eq!(report.applied(), 1);
+        let mut found = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "div"
+                    && el.get_attribute("data-slot") == Some("card")
+                    && el.get_attribute("role") == Some("article")
+                {
+                    found = true;
+                }
+            }
+        }
+        assert!(found, "emit rule didn't add shadcn attributes");
+    }
+
+    #[test]
+    fn remove_attrs_strips_specified_keys() {
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "strip-testids".into(),
+            framework: None,
+            selector: "[data-testid]".into(),
+            rename_to: "section".into(),
+            set_attrs: vec![],
+            remove_attrs: vec!["data-testid".into(), "data-telemetry".into()],
+            description: None,
+        });
+        let mut doc = Document::parse(
+            r#"<html><body><section data-testid="x" data-telemetry="y" class="k">ok</section></body></html>"#,
+        );
+        let report = apply(&mut doc, &reg, &no_detections());
+        assert_eq!(report.applied(), 1);
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "section" && el.get_attribute("class") == Some("k") {
+                    assert!(el.get_attribute("data-testid").is_none());
+                    assert!(el.get_attribute("data-telemetry").is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn attr_only_rule_matches_without_renaming() {
+        // When rename_to == current tag, rule still fires if attr work
+        // is requested — enables "add semantic aria attrs" rules.
+        let mut reg = NormalizeRegistry::new();
+        reg.insert(NormalizeSpec {
+            name: "aria-article".into(),
+            framework: None,
+            selector: "n-article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![("aria-label".into(), "article".into())],
+            remove_attrs: vec![],
+            description: None,
+        });
+        let mut doc = Document::parse("<html><body><n-article>x</n-article></body></html>");
+        let report = apply(&mut doc, &reg, &no_detections());
+        assert_eq!(report.applied(), 1);
+        let mut found = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "n-article"
+                    && el.get_attribute("aria-label") == Some("article")
+                {
+                    found = true;
+                }
+            }
+        }
+        assert!(found);
+    }
+
+    #[test]
+    fn roundtrip_html5_to_canonical_to_shadcn() {
+        // Two-pass framework conversion: generic <article> → n-article
+        // → shadcn-style <div data-slot=article>. End-to-end proof.
+        let mut reg = NormalizeRegistry::new();
+        // Pass 1: inbound.
+        reg.insert(NormalizeSpec {
+            name: "html5-article-in".into(),
+            framework: None,
+            selector: "article".into(),
+            rename_to: "n-article".into(),
+            set_attrs: vec![],
+            remove_attrs: vec![],
+            description: None,
+        });
+        // Pass 2: outbound emit.
+        reg.insert(NormalizeSpec {
+            name: "shadcn-article-out".into(),
+            framework: None,
+            selector: "n-article".into(),
+            rename_to: "div".into(),
+            set_attrs: vec![("data-slot".into(), "article".into())],
+            remove_attrs: vec![],
+            description: None,
+        });
+        let mut doc = Document::parse("<html><body><article>hi</article></body></html>");
+        let report = apply(&mut doc, &reg, &no_detections());
+        // article→n-article, then n-article→div. Two hits.
+        assert_eq!(report.applied(), 2);
+        let mut found_div = false;
+        let mut saw_article = false;
+        for n in doc.root.descendants() {
+            if let Some(el) = n.as_element() {
+                if el.tag == "article" {
+                    saw_article = true;
+                }
+                if el.tag == "div" && el.get_attribute("data-slot") == Some("article") {
+                    found_div = true;
+                }
+            }
+        }
+        assert!(!saw_article, "source article should have been rewritten");
+        assert!(found_div, "target shadcn-shaped div not emitted");
+    }
+
+    #[cfg(feature = "lisp")]
+    #[test]
+    fn compile_parses_set_attrs_and_remove_attrs() {
+        let src = r#"
+            (defnormalize :name "emit-shadcn-card"
+                          :selector "n-card"
+                          :rename-to "div"
+                          :set-attrs (("data-slot" "card") ("role" "article"))
+                          :remove-attrs ("data-testid" "data-telemetry"))
+        "#;
+        let specs = compile(src).unwrap();
+        assert_eq!(specs.len(), 1);
+        assert_eq!(specs[0].set_attrs.len(), 2);
+        assert_eq!(specs[0].set_attrs[0].0, "data-slot");
+        assert_eq!(specs[0].set_attrs[0].1, "card");
+        assert_eq!(specs[0].remove_attrs.len(), 2);
+        assert_eq!(specs[0].remove_attrs[0], "data-testid");
     }
 }

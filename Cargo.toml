@@ -21,6 +21,10 @@ eval = ["lisp", "dep:tatara-eval"]
 # queued. Each grammar compiles C via `cc`, so this feature adds
 # real compile time — off by default.
 ts = ["dep:tree-sitter", "dep:tree-sitter-typescript", "dep:tree-sitter-svelte-next"]
+# WASM/WASI agent host — sandboxed execution of precompiled modules
+# with capability-gated access. Foundation for Lisp-authored scrapers
+# that ship as .wasm. Heavier compile cost — opt-in.
+wasm = ["dep:wasmtime", "dep:wasmtime-wasi", "dep:wasi-common"]
 
 [dependencies]
 html5ever = "0.29"
@@ -42,11 +46,20 @@ blake3 = "1.8"
 tree-sitter = { version = "0.25", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }
 tree-sitter-svelte-next = { version = "0.1", optional = true }
+# WASM/WASI sandboxed agent host.
+wasmtime = { version = "38", optional = true, default-features = false, features = ["cranelift"] }
+wasmtime-wasi = { version = "38", optional = true }
+wasi-common = { version = "38", optional = true }
 
 [dev-dependencies]
 # Property-based testing — fuzzes parsers + invariants across
 # randomly generated inputs. dev-only, adds no runtime cost.
 proptest = "1"
+# Compile WAT (WebAssembly text format) inline in tests — lets us
+# verify WASM host behavior against small handwritten modules
+# without needing to ship binary blobs.
+wat = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
 [profile.release]
 codegen-units = 1

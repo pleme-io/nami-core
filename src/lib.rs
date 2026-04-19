@@ -44,3 +44,5 @@ pub mod state;
 pub mod storage;
 pub mod store;
 pub mod transform;
+#[cfg(feature = "wasm")]
+pub mod wasm;

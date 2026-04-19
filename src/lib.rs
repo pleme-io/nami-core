@@ -31,6 +31,7 @@ pub mod net;
 pub mod plan;
 pub mod predicate;
 pub mod query;
+pub mod route;
 pub mod scrape;
 pub mod selector;
 pub mod shadow;

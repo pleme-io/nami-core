@@ -22,6 +22,7 @@ pub mod framework;
 pub mod layout;
 pub mod lisp;
 pub mod net;
+pub mod plan;
 pub mod scrape;
 pub mod selector;
 pub mod state;

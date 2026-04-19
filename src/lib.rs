@@ -32,6 +32,7 @@ pub mod effect;
 pub mod eval;
 pub mod extension;
 pub mod framework;
+pub mod i18n;
 #[cfg(feature = "eval")]
 pub mod inline_lisp;
 pub mod layout;

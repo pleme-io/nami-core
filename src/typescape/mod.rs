@@ -353,6 +353,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Key chord / multi-key sequence → command mapping, with Vim-style mode scoping (normal/insert/visual/any) and optional predicate gate. Full Lisp programmability; ships with a default vim-mode pack."),
         mk("defomnibox", "omnibox::OmniboxSpec",
            "URL-bar autocomplete profile — sources (history/bookmarks/commands/tabs/extensions), search providers with {query} templates + shortcuts (ddg/g/gh), max_results, min_chars. Absorbs Chrome omnibox, Firefox awesomebar, Safari smart search."),
+        mk("defi18n", "i18n::MessageSpec",
+           "Localized message bundle — one (namespace, locale) shipped per form. Registry merges by key, resolves with fallback chain (exact → locale-prefix → en → raw key). Parameterized {placeholder} substitution via MessageRegistry::format. Absorbs chrome.i18n + Firefox browser.i18n."),
     ]
 }
 
@@ -494,8 +496,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            21,
-            "21 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            22,
+            "22 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -618,7 +620,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        21"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        22"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

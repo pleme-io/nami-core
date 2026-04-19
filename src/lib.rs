@@ -30,6 +30,7 @@ pub mod inline_lisp;
 pub mod layout;
 pub mod lisp;
 pub mod net;
+pub mod normalize;
 pub mod plan;
 pub mod predicate;
 pub mod query;

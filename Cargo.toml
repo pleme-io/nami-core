@@ -55,6 +55,13 @@ wasi-common = { version = "38", optional = true }
 # Property-based testing — fuzzes parsers + invariants across
 # randomly generated inputs. dev-only, adds no runtime cost.
 proptest = "1"
+# Microbenchmarks for storage + hot-path primitives.
+criterion = { version = "0.7", default-features = false, features = ["rayon"] }
+
+[[bench]]
+name = "storage_kv"
+harness = false
+path = "benches/storage_kv.rs"
 # Compile WAT (WebAssembly text format) inline in tests — lets us
 # verify WASM host behavior against small handwritten modules
 # without needing to ship binary blobs.

@@ -218,16 +218,146 @@ impl Store {
     pub fn keys(&self) -> Vec<String> {
         let mut inner = self.lock();
         let ttl = inner.ttl;
-        let now = now_secs();
-        if let Some(t) = ttl {
-            inner.entries.retain(|_, e| now.saturating_sub(e.ts) <= t);
-        }
+        prune_expired(&mut inner.entries, ttl);
         inner.entries.keys().cloned().collect()
+    }
+
+    /// Keys whose string starts with `prefix`. Useful for namespaced
+    /// stores (`"user/"`, `"tab/123/"`, `"cookie/domain.com/"`).
+    /// O(n) over live entries — fine at browser scale.
+    #[must_use]
+    pub fn prefix_keys(&self, prefix: &str) -> Vec<String> {
+        let mut inner = self.lock();
+        let ttl = inner.ttl;
+        prune_expired(&mut inner.entries, ttl);
+        inner
+            .entries
+            .keys()
+            .filter(|k| k.starts_with(prefix))
+            .cloned()
+            .collect()
+    }
+
+    /// Full `(key, value)` snapshot, excluding TTL-expired. Cheap to
+    /// clone because `Value` is `Arc`-friendly under the hood.
+    #[must_use]
+    pub fn entries(&self) -> Vec<(String, Value)> {
+        let mut inner = self.lock();
+        let ttl = inner.ttl;
+        prune_expired(&mut inner.entries, ttl);
+        inner
+            .entries
+            .iter()
+            .map(|(k, e)| (k.clone(), e.value.clone()))
+            .collect()
+    }
+
+    /// Entries matching a caller-supplied predicate over `(key, value)`.
+    /// The predicate runs under the store lock — keep it cheap.
+    #[must_use]
+    pub fn filter<F>(&self, mut pred: F) -> Vec<(String, Value)>
+    where
+        F: FnMut(&str, &Value) -> bool,
+    {
+        let mut inner = self.lock();
+        let ttl = inner.ttl;
+        prune_expired(&mut inner.entries, ttl);
+        inner
+            .entries
+            .iter()
+            .filter(|(k, e)| pred(k, &e.value))
+            .map(|(k, e)| (k.clone(), e.value.clone()))
+            .collect()
+    }
+
+    /// Bulk insert. Appends one journal line per (key, value) pair.
+    /// Ordering is preserved; last write per key wins.
+    pub fn set_many<I, K>(&self, pairs: I)
+    where
+        I: IntoIterator<Item = (K, Value)>,
+        K: Into<String>,
+    {
+        for (k, v) in pairs {
+            self.set(k, v);
+        }
+    }
+
+    /// Bulk delete by key list. Returns how many keys existed.
+    pub fn delete_many<'a, I>(&self, keys: I) -> usize
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        keys.into_iter()
+            .map(|k| usize::from(self.delete(k)))
+            .sum()
+    }
+
+    /// True when `key` is present (and not TTL-expired). O(1).
+    #[must_use]
+    pub fn contains(&self, key: &str) -> bool {
+        self.get(key).is_some()
+    }
+
+    /// Merge another store into this one. Last-write-wins by timestamp.
+    /// Used for import / sync primitives. The other store is read
+    /// atomically at call time; subsequent mutations there don't
+    /// propagate.
+    pub fn merge_from(&self, other: &Store) {
+        for (k, v) in other.entries() {
+            self.set(k, v);
+        }
+    }
+
+    // ── Lisp-value access ──────────────────────────────────────────
+    //
+    // Values can BE Lisp expressions, not just data. We tag them at
+    // write time so readers know they need evaluation before use.
+    // Future: secondary indexes keyed by eval-result enable O(1)
+    // access patterns for common shapes — callers request an index,
+    // the store reshapes without losing data.
+
+    /// Store a tatara-lisp expression (the raw source text). The
+    /// store marks it so readers can pull it as a string AND feed it
+    /// to an evaluator. Regular JSON values remain untagged.
+    pub fn set_expr(&self, key: impl Into<String>, sexp: impl Into<String>) {
+        self.set(
+            key,
+            serde_json::json!({ "_lisp": sexp.into() }),
+        );
+    }
+
+    /// Retrieve an expression stored via [`Store::set_expr`]. Returns
+    /// `None` if the key isn't present OR the value isn't a tagged
+    /// Lisp expression (it was stored as plain data via [`Store::set`]).
+    #[must_use]
+    pub fn get_expr(&self, key: &str) -> Option<String> {
+        match self.get(key)? {
+            Value::Object(map) => map
+                .get("_lisp")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned),
+            _ => None,
+        }
+    }
+
+    /// All keys whose value is a tagged Lisp expression. Useful for
+    /// batch eval passes and for the secondary-index arc in V2.
+    #[must_use]
+    pub fn lisp_keys(&self) -> Vec<String> {
+        self.filter(|_, v| {
+            matches!(v, Value::Object(map) if map.contains_key("_lisp"))
+        })
+        .into_iter()
+        .map(|(k, _)| k)
+        .collect()
     }
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.keys().len()
+        let mut inner = self.lock();
+        let ttl = inner.ttl;
+        prune_expired(&mut inner.entries, ttl);
+        inner.entries.len()
     }
 
     #[must_use]
@@ -276,6 +406,13 @@ fn apply_event(entries: &mut HashMap<String, Entry>, ev: Event) {
             entries.remove(&key);
         }
     }
+}
+
+/// Drop entries whose age exceeds `ttl`. No-op when `ttl` is `None`.
+fn prune_expired(entries: &mut HashMap<String, Entry>, ttl: Option<u64>) {
+    let Some(t) = ttl else { return };
+    let now = now_secs();
+    entries.retain(|_, e| now.saturating_sub(e.ts) <= t);
 }
 
 fn now_secs() -> u64 {
@@ -585,6 +722,183 @@ mod tests {
         assert_eq!(quote("ab"), r#""ab""#);
         assert_eq!(quote("a\"b"), r#""a\"b""#);
         assert_eq!(quote("a\\b"), r#""a\\b""#);
+    }
+
+    // ── Access-pattern coverage ───────────────────────────────────
+
+    #[test]
+    fn prefix_keys_filters_by_prefix() {
+        let s = Store::from_spec(&spec("prefix"));
+        s.set("user/alice", json!(1));
+        s.set("user/bob", json!(2));
+        s.set("cookie/xyz", json!(3));
+        let mut u = s.prefix_keys("user/");
+        u.sort();
+        assert_eq!(u, vec!["user/alice", "user/bob"]);
+        assert_eq!(s.prefix_keys("cookie/").len(), 1);
+        assert!(s.prefix_keys("missing/").is_empty());
+    }
+
+    #[test]
+    fn entries_returns_full_snapshot() {
+        let s = Store::from_spec(&spec("entries"));
+        s.set("a", json!(1));
+        s.set("b", json!(2));
+        let mut entries = s.entries();
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(entries, vec![
+            ("a".into(), json!(1)),
+            ("b".into(), json!(2)),
+        ]);
+    }
+
+    #[test]
+    fn filter_predicate_walks_values() {
+        let s = Store::from_spec(&spec("filter"));
+        s.set("a", json!(10));
+        s.set("b", json!(20));
+        s.set("c", json!(30));
+        let mut big: Vec<_> = s
+            .filter(|_k, v| v.as_i64().unwrap_or(0) > 15)
+            .into_iter()
+            .map(|(k, _)| k)
+            .collect();
+        big.sort();
+        assert_eq!(big, vec!["b", "c"]);
+    }
+
+    #[test]
+    fn set_many_and_delete_many_bulk_roundtrip() {
+        let s = Store::from_spec(&spec("bulk"));
+        s.set_many(
+            (0..50).map(|i| (format!("k{i}"), json!(i))),
+        );
+        assert_eq!(s.len(), 50);
+        let to_delete: Vec<String> = (0..10).map(|i| format!("k{i}")).collect();
+        let removed = s.delete_many(to_delete.iter().map(String::as_str));
+        assert_eq!(removed, 10);
+        assert_eq!(s.len(), 40);
+    }
+
+    #[test]
+    fn contains_checks_presence() {
+        let s = Store::from_spec(&spec("contains"));
+        assert!(!s.contains("k"));
+        s.set("k", json!("v"));
+        assert!(s.contains("k"));
+        s.delete("k");
+        assert!(!s.contains("k"));
+    }
+
+    #[test]
+    fn merge_from_propagates_entries_but_not_future_writes() {
+        let a = Store::from_spec(&spec("merge-a"));
+        let b = Store::from_spec(&spec("merge-b"));
+        b.set("from-b-1", json!(1));
+        b.set("from-b-2", json!(2));
+        a.merge_from(&b);
+        assert_eq!(a.len(), 2);
+        b.set("future", json!("not-in-a"));
+        assert_eq!(a.contains("future"), false);
+    }
+
+    #[test]
+    fn merge_from_is_last_write_wins() {
+        let a = Store::from_spec(&spec("merge-lww-a"));
+        let b = Store::from_spec(&spec("merge-lww-b"));
+        a.set("k", json!("a"));
+        b.set("k", json!("b"));
+        a.merge_from(&b);
+        assert_eq!(a.get("k"), Some(json!("b")));
+    }
+
+    // ── Lisp-value access ─────────────────────────────────────────
+
+    #[test]
+    fn set_expr_then_get_expr_roundtrips() {
+        let s = Store::from_spec(&spec("lisp"));
+        s.set_expr("visits-sq", "(* visits visits)");
+        assert_eq!(s.get_expr("visits-sq"), Some("(* visits visits)".into()));
+    }
+
+    #[test]
+    fn get_expr_returns_none_for_plain_value() {
+        let s = Store::from_spec(&spec("lisp2"));
+        s.set("k", json!(42));
+        assert_eq!(s.get_expr("k"), None);
+    }
+
+    #[test]
+    fn lisp_keys_only_returns_tagged_entries() {
+        let s = Store::from_spec(&spec("lisp3"));
+        s.set("plain", json!(1));
+        s.set_expr("one", "(+ 1 1)");
+        s.set_expr("two", "(* a b)");
+        let mut keys = s.lisp_keys();
+        keys.sort();
+        assert_eq!(keys, vec!["one", "two"]);
+    }
+
+    // ── Performance smoke tests ───────────────────────────────────
+    //
+    // Not cycle-accurate — criterion benchmarks cover that in
+    // `benches/`. These are cheap timing sanity checks that catch
+    // quadratic regressions at CI time.
+
+    #[test]
+    fn perf_set_10k_volatile_under_500ms() {
+        let s = Store::from_spec(&spec("perf-set"));
+        let t = std::time::Instant::now();
+        for i in 0..10_000 {
+            s.set(format!("k{i}"), json!(i));
+        }
+        let elapsed = t.elapsed();
+        assert_eq!(s.len(), 10_000);
+        assert!(
+            elapsed.as_millis() < 500,
+            "10k volatile sets took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn perf_get_10k_random_under_200ms() {
+        let s = Store::from_spec(&spec("perf-get"));
+        for i in 0..10_000 {
+            s.set(format!("k{i}"), json!(i));
+        }
+        let t = std::time::Instant::now();
+        for i in 0..10_000 {
+            let _ = s.get(&format!("k{i}"));
+        }
+        let elapsed = t.elapsed();
+        assert!(
+            elapsed.as_millis() < 200,
+            "10k gets took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn perf_replay_10k_from_disk_under_1s() {
+        let path = tmp_path("perf-replay");
+        let sp = StorageSpec {
+            path: Some(path.clone()),
+            ..spec("perf-replay")
+        };
+        {
+            let s = Store::from_spec(&sp);
+            for i in 0..10_000 {
+                s.set(format!("k{i}"), json!(i));
+            }
+        }
+        let t = std::time::Instant::now();
+        let s = Store::from_spec(&sp);
+        let elapsed = t.elapsed();
+        assert_eq!(s.len(), 10_000);
+        assert!(
+            elapsed.as_millis() < 1_000,
+            "10k replay took {elapsed:?}"
+        );
+        std::fs::remove_file(&path).ok();
     }
 
     #[cfg(feature = "lisp")]

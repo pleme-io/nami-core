@@ -47,3 +47,5 @@ pub mod transform;
 pub mod typescape;
 #[cfg(feature = "wasm")]
 pub mod wasm;
+#[cfg(feature = "lisp")]
+pub mod wasm_agent;

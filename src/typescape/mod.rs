@@ -330,6 +330,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Prop-parameterized DOM template — React-in-Lisp Layer 1. Supports `(@ prop)` + `(: expr)` via tatara-eval."),
         mk("defnormalize", "normalize::NormalizeSpec",
            "Framework-gated DOM rewrites toward canonical n-* vocabulary. :set-attrs + :remove-attrs support bidirectional (fold/emit) flows."),
+        mk("defwasm-agent", "wasm_agent::WasmAgentSpec",
+           "Precompiled .wasm scraper declaration — trigger + fuel budget + path. Executes against a read-only DOM snapshot via WasmHost::run_agent."),
     ]
 }
 
@@ -460,12 +462,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn typescape_contains_all_thirteen_dsl_keywords() {
+    fn typescape_contains_all_shipped_dsl_keywords() {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            13,
-            "13 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            14,
+            "14 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -587,7 +589,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        13"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        14"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     3"), "yaml: {yaml}");
         // 4 host APIs.

@@ -29,6 +29,7 @@ pub mod dom;
 pub mod effect;
 #[cfg(feature = "eval")]
 pub mod eval;
+pub mod extension;
 pub mod framework;
 #[cfg(feature = "eval")]
 pub mod inline_lisp;

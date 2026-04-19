@@ -345,6 +345,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Typed persistent key/value store with optional TTL. Pure tatara-lisp, append-only event log for persistence, BLAKE3-attestable. Covers cookies/session/user-prefs without FFI."),
         mk("defreader", "reader::ReaderSpec",
            "Readability-style simplified view — keep/strip selectors + paragraph-density fallback + title/byline extraction. Absorbs Firefox Reader View + Safari Reader into the substrate pattern."),
+        mk("defextension", "extension::ExtensionSpec",
+           "Browser-extension bundle — metadata, permissions, host-permissions, and ownership of other def* forms. Absorbs Chrome MV3 + Firefox WebExtensions + Safari App Extensions. Decentralized store: BLAKE3 content address + ed25519 author signature."),
     ]
 }
 
@@ -486,8 +488,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            17,
-            "17 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            18,
+            "18 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -610,7 +612,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        17"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        18"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

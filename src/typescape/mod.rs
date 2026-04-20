@@ -407,6 +407,16 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Pull-to-refresh rule — host glob + threshold (clamped [40, 300] CSS px) + command name + animation duration. command_for() returns the invoked command when the rule is enabled. Absorbs mobile Chrome/Safari/Firefox PTR."),
         mk("defdownload", "download::DownloadSpec",
            "Download manager policy — target folder, quarantine MIME list (Tor-Browser-style), auto-open MIME globs, hash_verify (None/Blake3/Sha256/Sha512), concurrency, resume flag, size cap. blake3_content_hash() emits the 26-char base32 shape so downloads flow into sekiban attestation directly. Absorbs Chrome/Firefox/Safari DL panels + uGet/aria2/JDownloader."),
+        mk("defautofill", "autofill::AutofillSpec",
+           "Form-autofill profile — typed field entries (FullName/Email/Phone/Street/PostalCode/CardNumber/Custom/…), per-site field-selector overrides, excluded_hosts, confirm_first_use flag. Absorbs Chrome/Firefox/Safari autofill + 1Password field detection + LastPass form-fill."),
+        mk("defpasswords", "passwords::PasswordsSpec",
+           "Password vault source — 22 known backends: Local, Kagibako, 1Password, Bitwarden, LastPass, Dashlane, NordPass, ProtonPass, Enpass, RoboForm, ZohoVault, KeePass, pass, gopass, macOS Keychain, Windows CredMan, libsecret (GNOME/KWallet), HashiCorp Vault, Akeyless, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, plus Process fallback. Per-vault unlock timeout, biometric requirement, host allow/block lists, sync cadence. CredentialRecord host-match + redacted() for safe logging."),
+        mk("defauth-saver", "auth_saver::AuthSaverSpec",
+           "Save-on-submit capture profile — vault binding, host scope, PromptPolicy (Always/SilentAllowList/Never), DetectionHints (username/password/signup/change-password selector lists), ignore_hosts, dedupe flag. Absorbs the 'save this password?' flow from every mainstream browser."),
+        mk("defsecure-note", "secure_note::SecureNoteSpec",
+           "Non-password secret storage — NoteKind (Text/Markdown/SshKey/GpgKey/ApiToken/DatabaseCredential/LicenseKey/TotpSeed/RecoveryCodes/SecurityQuestions/PaymentCard/Identity/WalletSeed), tags, expose-via-cli, auto-expire, always_reauth. Sensitive kinds (WalletSeed/Identity/PaymentCard/RecoveryCodes) auto-require re-auth. Absorbs 1Password Secure Notes, Bitwarden Secure Notes, Keychain Generic Passwords, pass freeform files."),
+        mk("defpasskey", "passkey::PasskeySpec",
+           "WebAuthn/FIDO2 passkey profile — Authenticator (Any/Platform/CrossPlatform), UserVerification (Required/Preferred/Discouraged), sync_passkeys, allowed+blocked rp_ids, resident_key (discoverable creds). PasskeyRecord with COSE algorithm id + sign_count + last_used_at. Absorbs iCloud Keychain Passkeys, Android Credential Manager, Windows Hello, YubiKey, 1Password/Bitwarden Passkeys."),
     ]
 }
 
@@ -548,8 +558,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            48,
-            "48 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            53,
+            "53 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -672,7 +682,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        48"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        53"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

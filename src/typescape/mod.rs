@@ -467,6 +467,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Multi-account persona — display_name + avatar + color, vault binding (defpasswords), cookie_jar binding, default_email + default_full_name for form autofill, auto_apply_hosts glob list, IdentityIsolation (None/PerProfile/Ephemeral/OsProcess), default flag, linked totp_profiles, priority tiebreak. Registry resolves by host match (priority-ordered) → default → first-enabled. Absorbs Chrome Profiles, Firefox Containers, Arc Spaces identities, Safari Profiles (macOS 14+), Microsoft Edge Work Profiles."),
         mk("deftotp", "totp::TotpSpec",
            "RFC 6238 TOTP 2FA profile — base32 secret, TotpAlgorithm (Sha1/Sha256/Sha512), digits (6/7/8), period (seconds), issuer + account_name pair, linked identities + vault, icon. generate_at(seconds) + generate_now() produce zero-padded codes; seconds_remaining tracks rollover; otpauth_uri() renders the QR-code format. Real HMAC-based implementation passes RFC 6238 Appendix B vectors. Absorbs Authy, Google Authenticator, 1Password TOTP, Bitwarden TOTP, Yubico Authenticator, macOS Passwords (TOTP), Aegis."),
+        mk("deffingerprint-randomize", "fingerprint_randomize::FingerprintRandomizeSpec",
+           "Canvas/WebGL/audio/font fingerprint farbling — FingerprintMode per surface (Allow/Noise/Generic/Block/Prompt) covering canvas, webgl, audio, client_rects, pointer_hover, prefers_media, locale, navigator_info; FontMode (Allow/SystemOnly/RandomizeMetrics/Block); UserAgentMode (Real/Generic/Randomize/AllowList); SessionScope (PerSession/PerHost/PerTab/PerCall) — higher scopes break more trackers + more sites; intensity clamped [0,1]; exempt_hosts allow-list where farbling is bypassed (banks, games). Absorbs Brave Shields, Tor Browser, LibreWolf, Mullvad Browser anti-fingerprint."),
+        mk("defcookie-jar", "cookie_jar::CookieJarSpec",
+           "Cookie storage partitioning + clearing — Partition (None/PerSite/PerTab/PerIdentity/Ephemeral) mirroring Firefox TCP + Chrome CHIPS; ThirdPartyPolicy (Allow/Block/BlockTrackers/RequireInteraction/Prompt) with per-host allow + block lists (block wins); CookieLifetime (Server/Session/Clamp24h/Clamp7days) matching Safari ITP + Firefox ETP; ClearTrigger set (All/ThirdParty/AllIfIdleDaysGt/IdentitySwitch/TabClose); max_cookies + max_cookie_bytes + idle_days caps; suppress_samesite_upgrade. admits_third_party honors storage-access grants."),
+        mk("defwebgpu-policy", "webgpu_policy::WebgpuPolicySpec",
+           "Per-host WebGPU access + disclosure — GpuAccess (Allow/AllowWithPrompt/AllowRenderOnly/SoftwareFallback/Block), AdapterInfoDisclosure (Full/Generic/Empty/Masquerade) with optional masquerade_vendor + architecture, ComputePolicy (Allow/Throttled/SecureContextOnly/Block) isolating the crypto-mining + fingerprint surface, max_buffer_mb + max_total_memory_mb caps, timestamp_query + shader_f16 feature toggles, ShaderFeatureSet (WebStandard/Extended/Experimental/Minimal), allow_hosts + block_hosts overrides (block wins). access_for + compute_for + accepts_buffer_bytes helpers. Absorbs Chrome/Firefox/Safari WebGPU gating + Brave/Tor adapter-info redaction."),
     ]
 }
 
@@ -608,8 +614,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            78,
-            "78 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            81,
+            "81 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -732,7 +738,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        78"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        81"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

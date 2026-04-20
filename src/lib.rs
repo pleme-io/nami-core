@@ -31,6 +31,7 @@ pub mod component;
 pub mod config;
 pub mod console_rule;
 pub mod content;
+pub mod cookie_jar;
 pub mod crdt_room;
 pub mod css;
 pub mod css_ast;
@@ -44,6 +45,7 @@ pub mod eval;
 pub mod extension;
 pub mod feed;
 pub mod find;
+pub mod fingerprint_randomize;
 pub mod framework;
 pub mod gesture;
 pub mod high_contrast;
@@ -110,6 +112,7 @@ pub mod typescape;
 pub mod url_clean;
 #[cfg(feature = "wasm")]
 pub mod wasm;
+pub mod webgpu_policy;
 #[cfg(feature = "lisp")]
 pub mod wasm_agent;
 pub mod zoom;

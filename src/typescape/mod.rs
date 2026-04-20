@@ -417,6 +417,14 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Non-password secret storage — NoteKind (Text/Markdown/SshKey/GpgKey/ApiToken/DatabaseCredential/LicenseKey/TotpSeed/RecoveryCodes/SecurityQuestions/PaymentCard/Identity/WalletSeed), tags, expose-via-cli, auto-expire, always_reauth. Sensitive kinds (WalletSeed/Identity/PaymentCard/RecoveryCodes) auto-require re-auth. Absorbs 1Password Secure Notes, Bitwarden Secure Notes, Keychain Generic Passwords, pass freeform files."),
         mk("defpasskey", "passkey::PasskeySpec",
            "WebAuthn/FIDO2 passkey profile — Authenticator (Any/Platform/CrossPlatform), UserVerification (Required/Preferred/Discouraged), sync_passkeys, allowed+blocked rp_ids, resident_key (discoverable creds). PasskeyRecord with COSE algorithm id + sign_count + last_used_at. Absorbs iCloud Keychain Passkeys, Android Credential Manager, Windows Hello, YubiKey, 1Password/Bitwarden Passkeys."),
+        mk("defllm-provider", "llm::LlmProviderSpec",
+           "LLM provider declaration — 7 kinds (OpenAiCompatible covers OpenAI+OpenRouter+Together+Groq+Fireworks+vLLM+llama.cpp+LM-Studio, Anthropic, Gemini, Ollama, Kurage, Mcp, Stub). Endpoint, model, max_tokens, temperature, auth_env, MCP tool name, rate limit, timeout. LlmProvider trait = pluggable engine surface (same pattern as JsRuntime). EchoProvider bundled for tests + default fallback."),
+        mk("defsummarize", "summarize::SummarizeSpec",
+           "Page summarization profile — provider, scope (WholePage/ReaderText/Selection), style (Paragraph/Bullets/Sentence/Outline/QnA), max_words, include_code, language override, extra_instructions. run() drives LlmProvider::generate. Composes with (defreader). Novel — no mainstream browser offers this first-class yet."),
+        mk("defchat-with-page", "chat::ChatSpec",
+           "Conversational Q&A over page contents — provider, ContextStrategy (WholeDom/Reader/Selection/Rag/None), HistoryScope (PerTab/PerSpace/Global/Ephemeral), storage namespace, max_context_tokens, keep_last_turns cap, rag_enabled + rag_chunk_size, system_prompt. build_call stitches system + context + history + question. Absorbs Arc AI chat, Edge Copilot, Brave Leo, Firefox AI sidebar."),
+        mk("defllm-completion", "llm_completion::LlmCompletionSpec",
+           "LLM-backed inline completion — CompletionTrigger (UrlBar/FormInput/Contenteditable/CodeBuffer), min_chars, debounce_ms, max_suggestions, temperature, host_gated + blocked_hosts, custom system_prompt. Built-in default_url_bar + default_compose profiles. Absorbs Arc AI URL completion, Edge Copilot-in-compose, Gmail Smart Compose."),
     ]
 }
 
@@ -558,8 +566,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            53,
-            "53 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            57,
+            "57 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -682,7 +690,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        53"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        57"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

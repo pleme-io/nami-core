@@ -371,6 +371,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Mouse-gesture binding — cardinal-token stroke string → command. StrokeBuilder incremental classifier with jitter threshold + duplicate collapse. Absorbs Vivaldi + Opera gestures."),
         mk("defboost", "boost::BoostSpec",
            "Per-site CSS / Lisp / JS / blocker-selector overlay — runtime-toggleable. merged_css and merged_blocker_selectors compose every applicable boost. Absorbs Arc Boosts + Stylus + Tampermonkey + Brave Shields."),
+        mk("defjs-runtime", "js_runtime::JsRuntimeSpec",
+           "Declarative JavaScript runtime profile — fuel_limit, memory_limit_bytes, capabilities (DomRead/Write, StorageRead/Write, FetchAllowedHosts, Notify, Clipboard, Console), host globs for fetch. The JsRuntime trait is the pluggable engine surface; MicroEval ships as the proof-of-pipeline (arithmetic + string concat + identifier lookup). Foundation for J1 (real engine as WASM guest), J2 (Service Workers), and (defboost) :js execution."),
     ]
 }
 
@@ -512,8 +514,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            30,
-            "30 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            31,
+            "31 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -636,7 +638,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        30"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        31"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

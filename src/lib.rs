@@ -38,6 +38,7 @@ pub mod gesture;
 pub mod i18n;
 #[cfg(feature = "eval")]
 pub mod inline_lisp;
+pub mod js_runtime;
 pub mod layout;
 pub mod lisp;
 pub mod net;

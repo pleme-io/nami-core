@@ -44,6 +44,7 @@ pub mod css_ast;
 pub mod derived;
 pub mod dns;
 pub mod dom;
+pub mod dom_diff;
 pub mod download;
 pub mod effect;
 #[cfg(feature = "eval")]

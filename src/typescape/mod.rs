@@ -443,6 +443,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "WCAG contrast enforcement — min_ratio (clamped [1, 21]), SchemeOverride (Auto/Light/Dark/Invert/Custom), foreground + background + link + link-visited color overrides, link_boost, focus-ring thickness + color. contrast_ratio() + parse_hex() helpers. Absorbs Windows High Contrast, macOS Increase Contrast, Chrome forced-colors, Firefox override page colors, Dark Reader patterns."),
         mk("defsimplify", "simplify::SimplifySpec",
            "Cognitive-load reduction — strip_animations / strip_autoplay / reduce_motion toggles, ScrollDamping (Native/Gentle/Slow/StepOnly with velocity_scalar), line_height_min (clamped), font_override (OpenDyslexic, Atkinson Hyperlegible), reading_guide, hide_sidebars, spacing_boost_pct, paragraph_spacing_mult. inject_css() emits ready-to-attach stylesheet. Built-in focus-mode + dyslexia_mode. Novel — no browser ships this first-class."),
+        mk("defpresence", "presence::PresenceSpec",
+           "Who-is-here tracking — PresenceTransport (Nats/Websocket/DirectP2p/Local), BroadcastField set (Cursor/Selection/Viewport/Typing/Attention/VoiceStatus), topic_template with {origin}/{path}/{space} tokens, expires_seconds stale-prune, display_name + avatar_template + throttle_ms + max_visible. PresenceEntry roster record with session_id (BLAKE3 26-char base32), cursor/selection/viewport/typing/focused/color. Absorbs Google Docs avatars, Figma viewers, Notion member indicators, Slack huddle rosters."),
+        mk("defcrdt-room", "crdt_room::CrdtRoomSpec",
+           "CRDT sync-room profile — RoomTransport (Nats/Websocket/DirectP2p/Local), CrdtKind (YCrdt/Automerge/LwwElementSet/OpLog), Persistence (None/IndexedDb/LocalStorage/Daemon), topic_template with {origin}/{path}/{space}/{room} tokens, awareness toggle, isolation_token scope, max_peers cap, snapshot_interval_seconds, throttle_ms, end-to-end encryption. Absorbs Figma multiplayer, Linear live-edit, Notion realtime, tldraw/Excalidraw rooms."),
+        mk("defmultiplayer-cursor", "multiplayer_cursor::MultiplayerCursorSpec",
+           "Live cursor visualization — CursorStyle (Pointer/Caret/Crosshair/Dot/Hand/CustomSvg), palette color list (round-robin per session), name_tag, fade_after_seconds, click_echo ripple, follow_mode camera jump, CursorScope (PerTab/PerProfile/Global), crowd_threshold hide-at-N, smoothing coefficient clamped [0,1], respect_reduced_motion. Absorbs Figma cursor chat, Excalidraw live cursors, tldraw multiplayer pointers, Arc Easels."),
     ]
 }
 
@@ -584,8 +590,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            66,
-            "66 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            69,
+            "69 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -708,7 +714,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        66"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        69"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

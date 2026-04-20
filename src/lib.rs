@@ -17,6 +17,7 @@ pub mod accessibility;
 pub mod agent;
 pub mod alias;
 pub mod blocker;
+pub mod boost;
 pub mod command;
 #[cfg(feature = "ts")]
 pub mod ast;
@@ -31,7 +32,9 @@ pub mod effect;
 #[cfg(feature = "eval")]
 pub mod eval;
 pub mod extension;
+pub mod find;
 pub mod framework;
+pub mod gesture;
 pub mod i18n;
 #[cfg(feature = "eval")]
 pub mod inline_lisp;
@@ -40,6 +43,7 @@ pub mod lisp;
 pub mod net;
 pub mod normalize;
 pub mod omnibox;
+pub mod pip;
 pub mod plan;
 pub mod predicate;
 pub mod query;
@@ -48,7 +52,9 @@ pub mod route;
 pub mod scrape;
 pub mod security_policy;
 pub mod selector;
+pub mod session;
 pub mod shadow;
+pub mod snapshot;
 pub mod state;
 pub mod storage;
 pub mod store;
@@ -58,3 +64,4 @@ pub mod typescape;
 pub mod wasm;
 #[cfg(feature = "lisp")]
 pub mod wasm_agent;
+pub mod zoom;

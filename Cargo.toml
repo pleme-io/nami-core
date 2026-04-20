@@ -39,13 +39,16 @@ todoku = { git = "https://github.com/pleme-io/todoku", optional = true }
 shikumi = { git = "https://github.com/pleme-io/shikumi", optional = true }
 tatara-lisp = { git = "ssh://git@github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
 tatara-eval = { git = "ssh://git@github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
-url = "2"
+url = { version = "2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
 thiserror = "2"
 # Content-addressable snapshots. Same BLAKE3 convention as tameshi.
 blake3 = "1.8"
+# Optional regex support for (deffind) and future DSLs that want
+# pattern-matching against live page text.
+regex = "1"
 # Source-language parsing (JSX/TSX/Vue/Svelte). Feature-gated.
 tree-sitter = { version = "0.25", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }

@@ -357,6 +357,20 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Localized message bundle — one (namespace, locale) shipped per form. Registry merges by key, resolves with fallback chain (exact → locale-prefix → en → raw key). Parameterized {placeholder} substitution via MessageRegistry::format. Absorbs chrome.i18n + Firefox browser.i18n."),
         mk("defsecurity-policy", "security_policy::SecurityPolicySpec",
            "Declarative per-host security-policy bundle — CSP, Permissions-Policy, Referrer-Policy, Cross-Origin-*, X-Frame-Options, plus convenience toggles (upgrade-insecure-requests, frame-ancestors, report-uri) merged idempotently into the CSP. Registry resolves most-specific host match; render_headers() emits the full HTTP header set."),
+        mk("deffind", "find::FindSpec",
+           "Find-in-page profile — case-sensitive, whole-word, regex, max-matches cap. Returns FindMatch with enclosing tag + text-node index + offset. Absorbs Cmd+F across every browser."),
+        mk("defzoom", "zoom::ZoomSpec",
+           "Per-host zoom preference — clamped [0.25, 5.0], text-only toggle. Absorbs Chrome per-site zoom + Firefox text-only + Safari Reader zoom."),
+        mk("defsnapshot", "snapshot::SnapshotSpec",
+           "Declarative page-snapshot recipe — region (viewport/full-page/selector/element), format (png/jpeg/webp), scale, quality, optional BLAKE3 attestation. Absorbs Firefox screenshot + Chrome full-page capture."),
+        mk("defpip", "pip::PipSpec",
+           "Picture-in-picture rules — per-host selectors, window corner, auto-activate on scroll-off, always-on-top. Absorbs Safari/Chrome/Firefox PiP."),
+        mk("defsession", "session::SessionSpec",
+           "Session-recovery policy — restore on open, undo-close ring, autosave cadence, preserve-pinned. SessionStore pairs with it. Absorbs Firefox Session Restore + Chrome Cmd+Shift+T."),
+        mk("defgesture", "gesture::GestureSpec",
+           "Mouse-gesture binding — cardinal-token stroke string → command. StrokeBuilder incremental classifier with jitter threshold + duplicate collapse. Absorbs Vivaldi + Opera gestures."),
+        mk("defboost", "boost::BoostSpec",
+           "Per-site CSS / Lisp / JS / blocker-selector overlay — runtime-toggleable. merged_css and merged_blocker_selectors compose every applicable boost. Absorbs Arc Boosts + Stylus + Tampermonkey + Brave Shields."),
     ]
 }
 
@@ -498,8 +512,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            23,
-            "23 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            30,
+            "30 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -622,7 +636,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        23"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        30"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

@@ -497,6 +497,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Clear-Site-Data header + triggered clears — Surface set (12 kinds: Cache/Cookies/Storage/ExecutionContexts/ClientHints/PrefetchCache/ServiceWorkers/Channels/Permissions/SyncData/AutofillLocal/All), Trigger (HeaderDriven/OnClose/OnTabClose/OnNavigateAway/OnIdle/Periodic/Manual/OnIdentitySwitch), Scope (ThisOrigin/RegistrableDomain/AllOrigins/ThisOriginAndPartitions), interval_hours + on_idle_minutes thresholds, exempt_hosts allow-list, always_preserve per-surface keep-list, force_execution_contexts injection, grace_period_seconds warning window. should_fire(ClearTriggerInput) pure decision; effective_surfaces() filters preserve + injects forced contexts. Absorbs Clear-Site-Data HTTP header + Chrome/Firefox/Safari 'clear browsing data' UIs + Safari ITP auto-clear."),
         mk("defaudit-trail", "audit_trail::AuditTrailSpec",
            "**Novel — no mainstream browser ships this.** Tamper-evident audit log of substrate actions — EventKind (17 kinds: RcReload/ExtensionInstall/ExtensionUninstall/ExtensionToggle/PermissionGrant/PermissionDeny/IdentitySwitch/SyncChange/StorageClear/RoutingChange/Navigation/TotpRead/DslFailure/PermissionBlocked/CapabilityRequest/AuditClear/Custom), Sink fan-out (Memory/Disk/Syslog/Sync/RemoteHttp/Nats), ring-buffered AuditStore with append/verify API. AuditEntry Merkle-chains via BLAKE3-128 (26-char base32 matching tameshi convention) — any post-hoc tamper to details/prev_hash/content_hash is detectable. redact_secrets + rotate_bytes + record_source_text knobs. Default: DISABLED (privacy-first; opt-in only). Pairs with tameshi / sekiban / kensa attestation chain."),
+        mk("defviewport", "viewport::ViewportSpec",
+           "Mobile viewport policy — ViewportWidth (DeviceWidth/FixedPx/FixedEm/Passthrough) with width_px + width_em when fixed, initial/min/max scale floats, UserScalable (Passthrough/ForceYes/ForceNo) — default ForceYes overrides hostile `user-scalable=no` (accessibility win), Inset set (Top/Right/Bottom/Left) with min_inset_* per-side floors max()'d against platform value, Orientation (Any/Portrait/Landscape/PortraitPrimary/PortraitSecondary/LandscapePrimary/LandscapeSecondary/Natural), ViewportFit (Auto/Contain/Cover), theme_color + color_scheme overrides. render_meta() emits the synthesized `<meta name=viewport>` string with proper formatting. clamp_scale, allows_user_zoom, effective_inset, exposes pure predicates. Absorbs `<meta name=viewport>` + CSS env(safe-area-inset-*) + Screen Orientation API + Android accessibility force-zoom."),
     ]
 }
 
@@ -638,8 +640,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            93,
-            "93 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            94,
+            "94 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -762,7 +764,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        93"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        94"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

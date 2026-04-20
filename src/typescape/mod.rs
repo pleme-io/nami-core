@@ -19,7 +19,7 @@
 //! The root Merkle aggregator walks every repo's manifest to produce
 //! the system-wide attestation.
 //!
-//! nami-core's contribution: **98 DSL keywords + 4 AST domains + 31
+//! nami-core's contribution: **99 DSL keywords + 4 AST domains + 31
 //! canonical vocabulary tags + 4 WASM host APIs + 6 feature flags +
 //! 3 provenance attrs**. Export via `manifest_yaml()` to produce the
 //! `.typescape.yaml` that arch-synthesizer's aggregator consumes.
@@ -509,6 +509,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "**Novel — mainstream browsers ship no declarative time-travel surface.** DOM-state capture with pure rewind — Trigger set (7 kinds: Interval/Navigate/ScrollEnd/DomMutation/FormChange/Explicit/BeforeUnload), CaptureField set (10 surfaces: Dom/Scroll/FormState/Url/Console/Identity/LocalStorage/SessionStorage/Viewport/FocusSelector), sample_ms cadence, ring-buffered TimeTravelStore with max_snapshots + max_bytes caps, chained BLAKE3-128 Merkle hashing (same tameshi convention as audit-trail) to prove the replay sequence wasn't reordered, min_delta_bytes filter drops near-identical samples, redact_secrets + exempt_hosts privacy rails. record / rewind(n) / verify() pure API — any tamper to payload or prev_hash produces a verify() Err. Default profile DISABLED (privacy-first)."),
         mk("deflocale", "locale::LocaleSpec",
            "Per-host locale override — primary language tag, accept_languages with auto-scaled q-values (entries with explicit q pass-through), IANA timezone, DateFormat (Locale/UsSlash/EuSlash/Iso/JaJp/Dotted), TimeFormat (Locale/H12/H24), FirstDay (Locale/Sunday/Monday/Saturday), Measurement (Passthrough/Metric/Imperial/Uk), ISO 4217 currency override, NumberingSystem (Latn/Arab/Arabext/Beng/Deva/Thai/Hanidec/Roman), expose_to_js toggle (off leaves navigator.language untouched while still overriding Accept-Language), exempt_hosts allow-list. render_accept_language() emits the canonical HTTP header; primary_tag() + js_languages() surface the JS side; q-value floor is 0.1 (never collapses). Absorbs Chrome/Firefox/Safari Accept-Language + navigator.language(s) + Intl.* defaults — none of which have per-host UI."),
+        mk("deftab-macro", "tab_macro::TabMacroSpec",
+           "**Novel — browsers scatter 'close other tabs' / 'mute all' as one-off menu items; nobody gives authors named, declarative, atomic multi-tab primitives.** Trigger (Command/Hotkey/Omnibox/AutoMatch/Periodic), Matcher struct (host_globs + title_contains + url_regex + pinned_only/not_pinned + in_group + created_before_days + playing_audio/silent + exclude_active), Action (14 kinds: Close/Reload/Duplicate/MoveToGroup/Pin/Unpin/Mute/Unmute/Hibernate/Discard/RewriteUrl/EvalScript/BookmarkAll/Overview), ActionPayload carrying target_group + url_template + script + runtime + bookmark_folder, atomic flag (all-or-none), dry_run mode, max_tabs safety ceiling, interval_seconds for Periodic, confirm_destructive toggle, hotkey + omnibox_alias bindings. is_destructive() flags risky actions; matches(TabView) + matched_indices() + render_rewrite() pure helpers. Default sample is DISABLED (destructive-capable)."),
     ]
 }
 
@@ -650,8 +652,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            98,
-            "98 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            99,
+            "99 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -775,7 +777,7 @@ mod tests {
         // Load-bearing count — adding a new DSL means also bumping
         // the `dsls: N` line here, which catches drift between the
         // module registry and this manifest.
-        assert!(yaml.contains("dsls:        98"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        99"), "yaml: {yaml}");
         // 4 AST domains currently: html + jsx + svelte + css.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs (WASM).

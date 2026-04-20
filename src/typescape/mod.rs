@@ -391,6 +391,14 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Highlight + comment profile — color palette, default color, shareable flag, max-comment cap, storage namespace. Annotation shape uses TextQuoteSelector (Hypothesis-compatible) for resilient anchoring, plus CSS selector + byte-range fallbacks. content_id hashes intrinsic fields to a 26-char base32 slug (tameshi-shape). Absorbs hypothes.is, Diigo, Safari PDF annotations."),
         mk("deffeed", "feed::FeedSpec",
            "RSS/Atom subscription — URL, cadence (clamped [60, 86400]s), category, max-items cap, storage name, enabled toggle. Registry enforces unique names, extends() drops invalid entries with a warning. Absorbs Opera Reader, NetNewsWire, Feedly OPML, Firefox Live Bookmarks."),
+        mk("defredirect", "redirect::RedirectSpec",
+           "Privacy-frontend redirect — host glob → mirror list with Priority/RoundRobin/Random rotation. Preserves path + query + fragment. Absorbs LibRedirect, Privacy Redirect (YouTube→Invidious/Piped, Twitter→Nitter, Reddit→Libreddit, etc.)."),
+        mk("defurl-clean", "url_clean::UrlCleanSpec",
+           "Tracking-parameter stripper — host-scoped list of exact names + trailing-`*` prefix matches. apply() rewrites a URL removing every matching query param; regex-free, dep-light. Absorbs ClearURLs, Neat URL, PureURL."),
+        mk("defscript-policy", "script_policy::ScriptPolicySpec",
+           "Per-origin JS execution + API restriction — mode (AllowAll/BlockAll/AllowList/BlockList), origin glob lists, 25-category API denylist (WebRtc/Geolocation/Canvas/WebGl/Sensors/FineTimers/ServiceWorker/Credentials/…), inline+eval toggles. Absorbs NoScript, JShelter, uMatrix, Brave JS-off-by-default."),
+        mk("defbridge", "bridge::BridgeSpec",
+           "Tor bridge + pluggable-transport endpoint — Direct/Obfs4/Meek/Snowflake/Webtunnel/Other, address, 40-hex fingerprint (validated, space-tolerant), transport-specific `extra` tail. to_torrc_line() emits the line Tor consumes; to_torrc_block() wraps every enabled bridge as `Bridge …` config. Absorbs Tor Browser bridge UI + tor-proxy ecosystem."),
     ]
 }
 
@@ -532,8 +540,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            40,
-            "40 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            44,
+            "44 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -656,7 +664,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        40"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        44"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

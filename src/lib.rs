@@ -19,6 +19,7 @@ pub mod alias;
 pub mod annotate;
 pub mod blocker;
 pub mod boost;
+pub mod bridge;
 pub mod command;
 #[cfg(feature = "ts")]
 pub mod ast;
@@ -53,9 +54,11 @@ pub mod plan;
 pub mod predicate;
 pub mod query;
 pub mod reader;
+pub mod redirect;
 pub mod route;
 pub mod routing;
 pub mod scrape;
+pub mod script_policy;
 pub mod security_policy;
 pub mod selector;
 pub mod session;
@@ -70,6 +73,7 @@ pub mod storage;
 pub mod store;
 pub mod transform;
 pub mod typescape;
+pub mod url_clean;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 #[cfg(feature = "lisp")]

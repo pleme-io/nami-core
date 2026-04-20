@@ -123,6 +123,7 @@ pub mod summarize;
 pub mod sync_channel;
 pub mod tab_group;
 pub mod tab_hibernate;
+pub mod tab_attestation;
 pub mod tab_macro;
 pub mod tab_preview;
 pub mod text_spacing;

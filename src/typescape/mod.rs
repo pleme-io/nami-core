@@ -487,6 +487,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Back/Forward Cache tuning — Eligibility (Off/Automatic/Aggressive/OptIn), ttl_seconds (clamped ≤3600), max_cached page count, Disqualifier set (15 reasons: Beforeunload/Unload/PagehideWithFetch/OpenWebsocket/OpenWebrtc/SensorWatcher/IndexedDbInFlight/OpenMessageChannel/SwControllerChange/CacheControlNoStore/HttpError/CertError/UnhandledRejection/OpenDialog/PictureInPicture), allow_with_ws + allow_with_webrtc opt-backs, preserve_scroll + preserve_form + fire_pageshow toggles, ScrollRestoration (Auto/Manual/Reset), max_page_memory_mb cap. is_eligible(PageSignal) is a pure decision function. Absorbs Chrome/Firefox bfcache + Safari Page Cache."),
         mk("defprerender-rule", "prerender_rule::PrerenderRuleSpec",
            "Chrome Speculation Rules + prerender declaration — SpeculationMode (Prefetch/Prerender), Eagerness (Conservative/Moderate/Eager/Immediate) matching the spec verbatim, SelectorKind (Explicit/SameOrigin/HrefPrefix/HrefRegex/DomSelector) with `urls`/`where_prefix`/`where_regex`/`where_selector` fields, RelativeTo (Document/Ruleset), max_concurrent cap, exclude_hosts, NetworkIsolation (None/AnonymousClientIpCrossOrigin), honor_save_data (respect data-saver), max_prerender_memory_mb cap. would_speculate(doc_host, href) pure predicate (handles same-origin resolution + absolute + relative URLs). Absorbs Chrome Speculation Rules API + Firefox rel=prerender + Safari prerender hints."),
+        mk("defhistory-policy", "history_policy::HistoryPolicySpec",
+           "History retention + privacy — Retention (Off/Session/Days/Forever/OnlyIfBookmarked) with retention_days, CaptureField set (10 fields: Title/Url/Favicon/VisitTime/VisitCount/Referrer/PageSnippet/Screenshot/NavigationType/DwellTime), Visibility (Full/LocalOnly/SuppressSuggestions/None), private_hosts glob list (banks/health/sensitive → never recorded), excluded_schemes (chrome://, about:, data:, view-source:), filter_short_typed_urls, min_dwell_seconds, cascade_delete_storage, sync + search_indexed toggles. should_record(host, url, dwell) pure predicate; retention_seconds() returns u64 (0 = session, u64::MAX = forever)."),
+        mk("defnavigation-intent", "navigation_intent::NavigationIntentSpec",
+           "Where new navigations open — OpenDisposition (9 dispositions: CurrentTab/NewTabForeground/NewTabBackground/NewWindow/IncognitoWindow/SameTabGroup/InlineReader/CopyLink/Block) per ClickSource (12 sources: LinkClick/MiddleClick/CmdClick/CmdShiftClick/ScriptOpen/FormTargetBlank/AnchorTargetBlank/DragDrop/Omnibox/BackForward/Reload/KeyboardShortcut). same_site_override + cross_origin_override refine by origin. popup default Block with popup_allow_hosts bypass; require_gesture_for_script_open forces Block when script-opened without user gesture; force_noopener + strip_cross_origin_referrer for link-privacy. resolve(source, same_origin, had_gesture) pure function. Absorbs Chrome/Firefox/Safari link-handling prefs + Vivaldi/Arc tab-open rules."),
     ]
 }
 
@@ -628,8 +632,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            88,
-            "88 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            90,
+            "90 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -752,7 +756,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        88"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        90"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

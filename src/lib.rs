@@ -50,6 +50,7 @@ pub mod fingerprint_randomize;
 pub mod framework;
 pub mod gesture;
 pub mod high_contrast;
+pub mod history_policy;
 pub mod i18n;
 pub mod identity;
 #[cfg(feature = "eval")]
@@ -62,6 +63,7 @@ pub mod llm;
 pub mod llm_completion;
 pub mod media_session;
 pub mod multiplayer_cursor;
+pub mod navigation_intent;
 pub mod net;
 pub mod normalize;
 pub mod offline;

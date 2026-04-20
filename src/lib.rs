@@ -120,6 +120,7 @@ pub mod sync_channel;
 pub mod tab_group;
 pub mod tab_hibernate;
 pub mod tab_preview;
+pub mod time_travel;
 pub mod totp;
 pub mod transform;
 pub mod typescape;

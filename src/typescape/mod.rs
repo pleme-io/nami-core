@@ -19,7 +19,7 @@
 //! The root Merkle aggregator walks every repo's manifest to produce
 //! the system-wide attestation.
 //!
-//! nami-core's contribution: **104 DSL keywords + 4 AST domains + 31
+//! nami-core's contribution: **105 DSL keywords + 4 AST domains + 31
 //! canonical vocabulary tags + 4 WASM host APIs + 6 feature flags +
 //! 3 provenance attrs**. Export via `manifest_yaml()` to produce the
 //! `.typescape.yaml` that arch-synthesizer's aggregator consumes.
@@ -519,6 +519,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "WCAG 1.4.12 text-spacing override — line_height (≥1.5 floor), paragraph_spacing (≥2.0 em), letter_spacing (≥0.12em), word_spacing (≥0.16em) as f32 multipliers, FontOverride (None/OpenDyslexic/AtkinsonHyperlegible/Lexend/SystemUi/Monospace/Serif) plus freeform font_family override, min_font_px floor, max_line_width_ch cap (typography + accessibility), underline_links / remove_italics / remove_text_effects a11y toggles, enforce flag appends !important on every rule so page CSS can't override. is_wcag_compliant() checks all four floors; resolved_font() maps override enum to a font-family stack; render_css() emits the complete stylesheet ready to inject. Absorbs stylesheet bookmarklets (Stylebot, Readable, Stylish) + Firefox 'Always override page fonts' prefs."),
         mk("defautoplay", "autoplay::AutoplaySpec",
            "Per-host media autoplay policy — AutoplayPolicy (AllowAll/BlockAudio/BlockAll/Never), muted_video_ok (Chrome default — muted <video> plays anyway), allow_after_interaction (lift block after click/keydown/touch — matches Chrome document-user-activation-required), allow_on_high_mei (Media Engagement Index bypass for frequently-used media sites), applies_to TrackKind list (AudioElement/VideoElement/WebRtc/MediaSession — empty = all), pause_in_background (Firefox-style media.block-autoplay-until-in-foreground), suppress_play_indicator to hide the tab-strip dot, exempt_hosts allow-list, runtime toggle. admits_autoplay(host, PlaybackContext) pure decision; should_pause_backgrounded() predicate. Absorbs Chrome autoplay-policy, Safari per-site Auto-Play, Firefox media.autoplay.default + blocking_policy — none of which expose declarative, host-glob–driven authoring."),
+        mk("defreferrer", "referrer::ReferrerSpec",
+           "Per-host Referer header policy — ReferrerPolicy (8 W3C values: NoReferrer / NoReferrerWhenDowngrade / Origin / OriginWhenCrossOrigin / SameOrigin / StrictOrigin / StrictOriginWhenCrossOrigin (default, W3C 2020) / UnsafeUrl), strip_query to trim `?q=…` on send, strip_fragment (spec-always-on flag), strip_on_downgrade forces no-Referer on HTTPS→HTTP even for UnsafeUrl, exempt_hosts allow-list for analytics partners (always full URL). header_for(from, to) is a pure side-effect-free helper returning Option<String> of exactly what the browser should send. UrlParts helper exposes origin/full/same_origin. Absorbs W3C Referrer-Policy, Brave Shields trimming, Firefox network.http.referer.XOriginPolicy, Safari ITP referer down-grading, uBlock per-host spoof rules — none of which expose a declarative host-glob authoring surface."),
         mk("deftab-attestation", "tab_attestation::TabAttestationSpec",
            "**Novel — no mainstream browser exposes per-tab cryptographic integrity.** Per-tab BLAKE3-Merkle chain: each tab has its own append-only log rooted at a Genesis entry (tab opened with URL X), extended with TabEventKind records (Genesis/Navigate/ScriptLoad/PermissionGrant/PermissionDeny/FormSubmit/StorageWrite/Fetch/Redirect/Close/UserGesture/DomMutation), each carrying prev_hash → content_hash links. Compatible with the pleme-io tameshi/sekiban/kensa/inshou attestation family (128-bit BLAKE3, 26-char base32). track list filters kinds (empty = all), max_entries ring-buffers per tab (never evicts below 1), include_body + include_response_body privacy toggles, export_on_close emits the sealed chain for audit, forward_to_audit composes with (defaudit-trail), exempt_hosts allow-lists banks/healthcare apps OUT of chaining. TabAttestationStore { begin, record, close, head_hash, verify_all } is append-only + verify() returns Err(broken_seq) on tamper. Close kind seals the chain; sealed chains reject further appends. Default DISABLED (privacy-first)."),
     ]
@@ -662,8 +664,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            104,
-            "104 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            105,
+            "105 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -787,7 +789,7 @@ mod tests {
         // Load-bearing count — adding a new DSL means also bumping
         // the `dsls: N` line here, which catches drift between the
         // module registry and this manifest.
-        assert!(yaml.contains("dsls:        104"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        105"), "yaml: {yaml}");
         // 4 AST domains currently: html + jsx + svelte + css.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs (WASM).

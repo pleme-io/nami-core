@@ -91,6 +91,7 @@ pub mod query;
 pub mod reader;
 pub mod reader_aloud;
 pub mod redirect;
+pub mod referrer;
 pub mod resource_hint;
 pub mod route;
 pub mod routing;

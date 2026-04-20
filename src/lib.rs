@@ -68,6 +68,8 @@ pub mod omnibox;
 pub mod outline;
 pub mod passkey;
 pub mod passwords;
+pub mod permission_policy;
+pub mod permission_prompt;
 pub mod pip;
 pub mod plan;
 pub mod predicate;

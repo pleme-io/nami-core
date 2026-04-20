@@ -477,6 +477,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Pluggable omnibox suggestion source — SourceKind (11 kinds: History/Bookmarks/OpenTabs/SearchEngines/SearchSuggest/SearchBangs/Clipboard/TopLevelDomain/LocalFiles/Llm/Custom), weight multiplier (clamped ≥0), max_results, min_input_len gate (counts unicode codepoints), host glob, inline-completion toggle, SuggestionShape (Text/Url/Rich/Action), max_age_days, priority tiebreak, freeform config string for opaque provider args. Registry: by_kind filter + active_for(input, host) filter + total_budget sum. Absorbs Chrome Omnibox providers, Firefox Awesome Bar sources, Arc Command Bar, Raycast extensions."),
         mk("defsuggestion-ranker", "suggestion_ranker::SuggestionRankerSpec",
            "Omnibox scoring + merge — RankStrategy (Recency/Frequency/Relevance/Frecency/Hybrid/Alphabetic), recency decay_half_life_days with pow(0.5, age/half_life) helper, fuzzy_threshold + inline_threshold floors, DedupePolicy (None/ByUrl/ByDomain/ByTitle/ByKindUrl), prefer_inputs ordered list (ExactPrefix/CaseInsensitivePrefix/SubstringOrdered/SubstringAny/Fuzzy/Recent/Frequent), typed_boost + open_tab_boost multipliers, source_names allow-list (empty = all). for_source() prefers source-specific ranker over default. Absorbs Chrome HQP scoring, Firefox frecency, Arc relevance merge, Raycast fuzzy+recent."),
+        mk("defpermission-policy", "permission_policy::PermissionPolicySpec",
+           "Per-host permission decision tree — 24 Permission kinds (Camera/Microphone/Geolocation/Notifications/PersistentStorage/ClipboardRead/ClipboardWrite/Midi/BackgroundSync/IdleDetection/ScreenWake/Usb/Serial/Hid/Bluetooth/NfcRead/AmbientLightSensor/Popups/Push/AutoplayWithSound/DisplayCapture/ProtectedMedia/PaymentHandler/Custom), Decision enum (Allow/Block/Prompt/PromptEphemeral/RequireUserGesture/BlockWithBadge), require_user_gesture allow-list on top of base decision, allow_hosts upgrades Block→Allow, block_hosts force-Block (precedes allow). decide(perm, host) pure function. Absorbs Chrome/Firefox/Safari permission UIs + Brave Shields + Arc site settings."),
+        mk("defpermission-prompt", "permission_prompt::PermissionPromptSpec",
+           "Declarative permission-prompt UX — PromptStyle (Modal/Anchored/QuietBadge/Toast/Interstitial/None), remember_days + deny_after_seconds timers, FocusSteal (Immediate/None/Foreground), group_related for bundling camera+mic into one ask, text_template with {origin}/{permission} tokens, icon_url override, permissions allow-list + exclude_permissions block-list, offer_permanent (don't-ask-again checkbox), priority tiebreak. resolve(permission, host) picks host-and-permission-specific over wildcard, priority-ordered within each tier. Absorbs Chrome quiet UI, Firefox permission panel, Safari pop-over, Brave shield."),
     ]
 }
 
@@ -618,8 +622,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            83,
-            "83 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            85,
+            "85 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -742,7 +746,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        83"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        85"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

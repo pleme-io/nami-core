@@ -437,6 +437,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Performance profile + budgets — MetricCategory (Navigation/Paint/Layout/Scripting/Memory/Network/Interaction/Rendering/Gpu/UserTiming/Custom), sampling Hz, rolling-window seconds, per-metric PerfBudget with warn/error thresholds + OverMax/UnderMin direction. evaluate_metric returns worst severity + breaching budget. Absorbs Chrome Performance, Firefox Profiler, Safari Timelines + Lighthouse/webhint budget declarations."),
         mk("defconsole-rule", "console_rule::ConsoleRuleSpec",
            "Console output rule — LogLevel (Debug/Info/Log/Warn/Error/Table/Any), regex OR literal-substring pattern, host glob, ConsoleAction (Display/Drop/Capture/Emit) with color/background/prefix overrides, capture_store namespace, emit_state cell. case_insensitive + literal toggles. Absorbs Chrome DevTools console filters + log-level color schemes across browsers."),
+        mk("defreader-aloud", "reader_aloud::ReaderAloudSpec",
+           "TTS page-reading profile — voice / rate / pitch / volume (clamped), ReadScope (WholePage/ReaderText/Selection/Selector), SpeechSource (Platform/Oto/Http/Llm — composes with AI pack), sentence highlighting, stop-on-navigate, auto-start. Absorbs Safari Speak Screen, Edge Read Aloud, Chrome Select-to-Speak, NVDA/JAWS/VoiceOver patterns."),
+        mk("defhigh-contrast", "high_contrast::HighContrastSpec",
+           "WCAG contrast enforcement — min_ratio (clamped [1, 21]), SchemeOverride (Auto/Light/Dark/Invert/Custom), foreground + background + link + link-visited color overrides, link_boost, focus-ring thickness + color. contrast_ratio() + parse_hex() helpers. Absorbs Windows High Contrast, macOS Increase Contrast, Chrome forced-colors, Firefox override page colors, Dark Reader patterns."),
+        mk("defsimplify", "simplify::SimplifySpec",
+           "Cognitive-load reduction — strip_animations / strip_autoplay / reduce_motion toggles, ScrollDamping (Native/Gentle/Slow/StepOnly with velocity_scalar), line_height_min (clamped), font_override (OpenDyslexic, Atkinson Hyperlegible), reading_guide, hide_sidebars, spacing_boost_pct, paragraph_spacing_mult. inject_css() emits ready-to-attach stylesheet. Built-in focus-mode + dyslexia_mode. Novel — no browser ships this first-class."),
     ]
 }
 
@@ -578,8 +584,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            63,
-            "63 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            66,
+            "66 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -702,7 +708,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        63"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        66"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

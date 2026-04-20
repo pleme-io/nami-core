@@ -20,6 +20,7 @@ pub mod annotate;
 pub mod audit_trail;
 pub mod auth_saver;
 pub mod autofill;
+pub mod autoplay;
 pub mod chat;
 pub mod bfcache_policy;
 pub mod blocker;

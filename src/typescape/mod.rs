@@ -19,10 +19,12 @@
 //! The root Merkle aggregator walks every repo's manifest to produce
 //! the system-wide attestation.
 //!
-//! nami-core's contribution: **13 DSL keywords + 3 AST domains + 31
+//! nami-core's contribution: **98 DSL keywords + 4 AST domains + 31
 //! canonical vocabulary tags + 4 WASM host APIs + 6 feature flags +
 //! 3 provenance attrs**. Export via `manifest_yaml()` to produce the
 //! `.typescape.yaml` that arch-synthesizer's aggregator consumes.
+//! (Counts move every commit — the coherence tests at the bottom of
+//! this file are the load-bearing assertions.)
 //!
 //! Downstream tooling (agents, MCP servers, doc generators,
 //! compliance checkers) reads this structure instead of scraping the
@@ -770,12 +772,13 @@ mod tests {
     #[test]
     fn manifest_yaml_declares_current_counts() {
         let yaml = manifest_yaml();
-        // 13 DSLs is a load-bearing count — adding a new one means
-        // also updating the `dsls: N` line here, which catches drift.
+        // Load-bearing count — adding a new DSL means also bumping
+        // the `dsls: N` line here, which catches drift between the
+        // module registry and this manifest.
         assert!(yaml.contains("dsls:        98"), "yaml: {yaml}");
-        // 3 AST domains currently: html + jsx + svelte.
+        // 4 AST domains currently: html + jsx + svelte + css.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
-        // 4 host APIs.
+        // 4 host APIs (WASM).
         assert!(yaml.contains("host_apis:   4"), "yaml: {yaml}");
     }
 

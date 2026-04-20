@@ -242,31 +242,8 @@ impl AuditEntry {
         hasher.update(prev_hash.as_bytes());
         let bytes = hasher.finalize();
         // 16 bytes (128-bit) → 26 chars base32 without padding.
-        base32_16(&bytes.as_bytes()[..16])
+        crate::extension::base32_16_upper(&bytes.as_bytes()[..16])
     }
-}
-
-fn base32_16(bytes: &[u8]) -> String {
-    // RFC 4648 alphabet, no padding.
-    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    let mut out = String::with_capacity(26);
-    let mut buf: u64 = 0;
-    let mut bits: u32 = 0;
-    for b in bytes {
-        buf = (buf << 8) | u64::from(*b);
-        bits += 8;
-        while bits >= 5 {
-            bits -= 5;
-            let idx = ((buf >> bits) & 0x1f) as usize;
-            out.push(ALPHABET[idx] as char);
-        }
-    }
-    if bits > 0 {
-        let idx = ((buf << (5 - bits)) & 0x1f) as usize;
-        out.push(ALPHABET[idx] as char);
-    }
-    // 128 bits → 26 characters (25 full + 1 remainder).
-    out
 }
 
 /// Append-only audit store. Memory-sink implementation; disk/syslog/

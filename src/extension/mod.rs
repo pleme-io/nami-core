@@ -282,9 +282,9 @@ impl ExtensionRegistry {
 /// Lowercase base32 (RFC 4648 alphabet, no padding) over arbitrary
 /// bytes. Shared by snapshot/annotate/download/extension::signature
 /// to produce 26-char content-addressable IDs from 16-byte BLAKE3
-/// prefixes. Callers that want the uppercase convention
-/// (audit_trail, time_travel) keep their own local encoder — their
-/// on-the-wire form is distinct.
+/// prefixes. The uppercase sibling `base32_16_upper` serves the
+/// tameshi/sekiban/kensa attestation convention used by audit_trail,
+/// time_travel, and tab_attestation.
 pub(crate) fn base32_16(bytes: &[u8]) -> String {
     const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz234567";
     let mut out = String::new();
@@ -300,6 +300,35 @@ pub(crate) fn base32_16(bytes: &[u8]) -> String {
     }
     if bits > 0 {
         out.push(ALPHABET[((buf << (5 - bits)) & 0x1f) as usize] as char);
+    }
+    out
+}
+
+/// Uppercase RFC 4648 base32 encoder (no padding). Used by the
+/// pleme-io attestation family (audit_trail / time_travel /
+/// tab_attestation) — shares the tameshi / sekiban / kensa / inshou
+/// 128-bit → 26-char convention.
+///
+/// Distinct alphabet from `base32_16` (lowercase) so the two wire
+/// formats never collide — content-addressable hashes picked one; the
+/// attestation chain picked the other.
+pub(crate) fn base32_16_upper(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let mut out = String::with_capacity(26);
+    let mut buf: u64 = 0;
+    let mut bits: u32 = 0;
+    for b in bytes {
+        buf = (buf << 8) | u64::from(*b);
+        bits += 8;
+        while bits >= 5 {
+            bits -= 5;
+            let idx = ((buf >> bits) & 0x1f) as usize;
+            out.push(ALPHABET[idx] as char);
+        }
+    }
+    if bits > 0 {
+        let idx = ((buf << (5 - bits)) & 0x1f) as usize;
+        out.push(ALPHABET[idx] as char);
     }
     out
 }

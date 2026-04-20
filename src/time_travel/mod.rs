@@ -205,29 +205,8 @@ impl Snapshot {
         h.update(payload);
         h.update(b"||");
         h.update(prev_hash.as_bytes());
-        base32_16(&h.finalize().as_bytes()[..16])
+        crate::extension::base32_16_upper(&h.finalize().as_bytes()[..16])
     }
-}
-
-fn base32_16(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    let mut out = String::with_capacity(26);
-    let mut buf: u64 = 0;
-    let mut bits: u32 = 0;
-    for b in bytes {
-        buf = (buf << 8) | u64::from(*b);
-        bits += 8;
-        while bits >= 5 {
-            bits -= 5;
-            let idx = ((buf >> bits) & 0x1f) as usize;
-            out.push(ALPHABET[idx] as char);
-        }
-    }
-    if bits > 0 {
-        let idx = ((buf << (5 - bits)) & 0x1f) as usize;
-        out.push(ALPHABET[idx] as char);
-    }
-    out
 }
 
 impl TimeTravelSpec {

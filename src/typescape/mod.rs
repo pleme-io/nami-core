@@ -431,6 +431,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Media casting profile — 5 protocols (Chromecast/AirPlay/Miracast/DLNA/WebPresentation), discovery transport (Mdns/Ssdp/MdnsAndSsdp/Manual), host allow-list, preferred + default receivers, session timeout, require_confirm flag. CastReceiver shape with capability list + supports_all() check. Absorbs Google Cast SDK, Apple AirPlay, Microsoft Miracast, DLNA/UPnP."),
         mk("defsubtitle", "subtitle::SubtitleSpec",
            "Caption/subtitle handling — formats (Vtt/Srt/Ssa/Dfxp/PlatformLive), language preferences in order (exact + prefix match), font-size % (clamped [50, 400]), position (Bottom/Top/Native), auto_translate + target + provider (ties into AI pack). pick_language + should_auto_translate honor the preference chain. Absorbs HTML5 <track>, Netflix/YouTube UI, platform live captions."),
+        mk("definspector", "inspector::InspectorSpec",
+           "Inspector-panel declaration — title, icon, data source (Http/Mcp/Storage/State/Query/Static), view (Table/Tree/Timeline/Json/Text/Metric/Tail), refresh strategy (Manual/Interval/Tail/Once), position (Left/Right/Bottom/Floating), visibility toggle. Absorbs Chrome/Firefox/Safari DevTools panel extensions — but authored in one Lisp form instead of devtools_page + registerPanel + JS glue."),
+        mk("defprofiler", "profiler::ProfilerSpec",
+           "Performance profile + budgets — MetricCategory (Navigation/Paint/Layout/Scripting/Memory/Network/Interaction/Rendering/Gpu/UserTiming/Custom), sampling Hz, rolling-window seconds, per-metric PerfBudget with warn/error thresholds + OverMax/UnderMin direction. evaluate_metric returns worst severity + breaching budget. Absorbs Chrome Performance, Firefox Profiler, Safari Timelines + Lighthouse/webhint budget declarations."),
+        mk("defconsole-rule", "console_rule::ConsoleRuleSpec",
+           "Console output rule — LogLevel (Debug/Info/Log/Warn/Error/Table/Any), regex OR literal-substring pattern, host glob, ConsoleAction (Display/Drop/Capture/Emit) with color/background/prefix overrides, capture_store namespace, emit_state cell. case_insensitive + literal toggles. Absorbs Chrome DevTools console filters + log-level color schemes across browsers."),
     ]
 }
 
@@ -572,8 +578,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            60,
-            "60 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            63,
+            "63 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -696,7 +702,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        60"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        63"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

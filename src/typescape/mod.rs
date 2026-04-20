@@ -473,6 +473,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Cookie storage partitioning + clearing — Partition (None/PerSite/PerTab/PerIdentity/Ephemeral) mirroring Firefox TCP + Chrome CHIPS; ThirdPartyPolicy (Allow/Block/BlockTrackers/RequireInteraction/Prompt) with per-host allow + block lists (block wins); CookieLifetime (Server/Session/Clamp24h/Clamp7days) matching Safari ITP + Firefox ETP; ClearTrigger set (All/ThirdParty/AllIfIdleDaysGt/IdentitySwitch/TabClose); max_cookies + max_cookie_bytes + idle_days caps; suppress_samesite_upgrade. admits_third_party honors storage-access grants."),
         mk("defwebgpu-policy", "webgpu_policy::WebgpuPolicySpec",
            "Per-host WebGPU access + disclosure — GpuAccess (Allow/AllowWithPrompt/AllowRenderOnly/SoftwareFallback/Block), AdapterInfoDisclosure (Full/Generic/Empty/Masquerade) with optional masquerade_vendor + architecture, ComputePolicy (Allow/Throttled/SecureContextOnly/Block) isolating the crypto-mining + fingerprint surface, max_buffer_mb + max_total_memory_mb caps, timestamp_query + shader_f16 feature toggles, ShaderFeatureSet (WebStandard/Extended/Experimental/Minimal), allow_hosts + block_hosts overrides (block wins). access_for + compute_for + accepts_buffer_bytes helpers. Absorbs Chrome/Firefox/Safari WebGPU gating + Brave/Tor adapter-info redaction."),
+        mk("defsuggestion-source", "suggestion_source::SuggestionSourceSpec",
+           "Pluggable omnibox suggestion source — SourceKind (11 kinds: History/Bookmarks/OpenTabs/SearchEngines/SearchSuggest/SearchBangs/Clipboard/TopLevelDomain/LocalFiles/Llm/Custom), weight multiplier (clamped ≥0), max_results, min_input_len gate (counts unicode codepoints), host glob, inline-completion toggle, SuggestionShape (Text/Url/Rich/Action), max_age_days, priority tiebreak, freeform config string for opaque provider args. Registry: by_kind filter + active_for(input, host) filter + total_budget sum. Absorbs Chrome Omnibox providers, Firefox Awesome Bar sources, Arc Command Bar, Raycast extensions."),
+        mk("defsuggestion-ranker", "suggestion_ranker::SuggestionRankerSpec",
+           "Omnibox scoring + merge — RankStrategy (Recency/Frequency/Relevance/Frecency/Hybrid/Alphabetic), recency decay_half_life_days with pow(0.5, age/half_life) helper, fuzzy_threshold + inline_threshold floors, DedupePolicy (None/ByUrl/ByDomain/ByTitle/ByKindUrl), prefer_inputs ordered list (ExactPrefix/CaseInsensitivePrefix/SubstringOrdered/SubstringAny/Fuzzy/Recent/Frequent), typed_boost + open_tab_boost multipliers, source_names allow-list (empty = all). for_source() prefers source-specific ranker over default. Absorbs Chrome HQP scoring, Firefox frecency, Arc relevance merge, Raycast fuzzy+recent."),
     ]
 }
 
@@ -614,8 +618,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            81,
-            "81 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            83,
+            "83 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -738,7 +742,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        81"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        83"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

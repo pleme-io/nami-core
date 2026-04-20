@@ -101,6 +101,8 @@ pub mod state;
 pub mod storage;
 pub mod store;
 pub mod subtitle;
+pub mod suggestion_ranker;
+pub mod suggestion_source;
 pub mod summarize;
 pub mod sync_channel;
 pub mod tab_group;

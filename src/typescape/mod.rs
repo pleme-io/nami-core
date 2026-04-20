@@ -373,6 +373,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Per-site CSS / Lisp / JS / blocker-selector overlay — runtime-toggleable. merged_css and merged_blocker_selectors compose every applicable boost. Absorbs Arc Boosts + Stylus + Tampermonkey + Brave Shields."),
         mk("defjs-runtime", "js_runtime::JsRuntimeSpec",
            "Declarative JavaScript runtime profile — fuel_limit, memory_limit_bytes, capabilities (DomRead/Write, StorageRead/Write, FetchAllowedHosts, Notify, Clipboard, Console), host globs for fetch. The JsRuntime trait is the pluggable engine surface; MicroEval ships as the proof-of-pipeline (arithmetic + string concat + identifier lookup). Foundation for J1 (real engine as WASM guest), J2 (Service Workers), and (defboost) :js execution."),
+        mk("defspace", "space::SpaceSpec",
+           "Arc-style space — grouped tabs with per-space theme / homepage / bookmarks folder / omnibox profile / storage isolation. Absorbs Arc Spaces, Firefox Containers, Safari Profiles, Edge Workspaces. SpaceState tracks the currently active space."),
+        mk("defsidebar", "sidebar::SidebarSpec",
+           "Persistent sidebar webview — URL, position, width (clamped [120, 800]), pinned flag, space + host gates (ANDed), hibernation timeout. Absorbs Arc sidebar apps, Opera sidebar messengers, Vivaldi web panels."),
+        mk("defsplit", "split::SplitSpec",
+           "Declarative split-view layout — Horizontal/Vertical/Grid tiling of N panes with flexbox-style weights. proportional_sizes() returns pixel widths for any axis_size. Absorbs Arc Split View, Vivaldi tile-tabs, Safari two-pane."),
     ]
 }
 
@@ -514,8 +520,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            31,
-            "31 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            34,
+            "34 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -638,7 +644,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        31"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        34"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

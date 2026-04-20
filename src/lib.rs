@@ -34,6 +34,7 @@ pub mod component;
 pub mod config;
 pub mod console_rule;
 pub mod content;
+pub mod cookie_banner;
 pub mod cookie_jar;
 pub mod crdt_room;
 pub mod csp_policy;

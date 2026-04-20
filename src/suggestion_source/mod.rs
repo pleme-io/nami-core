@@ -164,10 +164,7 @@ impl SuggestionSourceSpec {
         if self.clamped_weight() == 0.0 {
             return false;
         }
-        if self.host.is_empty() || self.host == "*" {
-            return true;
-        }
-        crate::extension::glob_match_host(&self.host, host)
+        crate::extension::host_pattern_matches(&self.host, host)
     }
 }
 

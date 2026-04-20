@@ -316,6 +316,18 @@ pub fn glob_match_host(pattern: &str, host: &str) -> bool {
     glob_match(&host_part.to_ascii_lowercase(), &host.to_ascii_lowercase())
 }
 
+/// Short-circuit wrapper — empty pattern and `"*"` both match any
+/// host; anything else delegates to `glob_match_host`. Dedupes the
+/// `if self.host.is_empty() || self.host == "*" { return true; }`
+/// boilerplate shared by 40+ DSL matches_host impls.
+#[must_use]
+pub fn host_pattern_matches(pattern: &str, host: &str) -> bool {
+    if pattern.is_empty() || pattern == "*" {
+        return true;
+    }
+    glob_match_host(pattern, host)
+}
+
 fn extract_host_part(pattern: &str) -> &str {
     // Strip scheme and path portions for host matching.
     // `*://*.example.com/*` → `*.example.com`

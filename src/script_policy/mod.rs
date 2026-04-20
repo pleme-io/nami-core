@@ -132,10 +132,7 @@ fn default_host() -> String {
 impl ScriptPolicySpec {
     #[must_use]
     pub fn matches_host(&self, host: &str) -> bool {
-        if self.host.is_empty() || self.host == "*" {
-            return true;
-        }
-        crate::extension::glob_match_host(&self.host, host)
+        crate::extension::host_pattern_matches(&self.host, host)
     }
 
     /// Would a script loaded from `origin` be allowed to run under

@@ -160,10 +160,7 @@ impl SpoofSpec {
 
     #[must_use]
     pub fn matches_host(&self, host: &str) -> bool {
-        if self.host.is_empty() || self.host == "*" {
-            return true;
-        }
-        crate::extension::glob_match_host(&self.host, host)
+        crate::extension::host_pattern_matches(&self.host, host)
     }
 
     /// True if this spec overrides the User-Agent (any value other

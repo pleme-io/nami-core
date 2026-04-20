@@ -149,10 +149,7 @@ impl TabPreviewSpec {
 
     #[must_use]
     pub fn matches_host(&self, host: &str) -> bool {
-        if self.host.is_empty() || self.host == "*" {
-            return true;
-        }
-        crate::extension::glob_match_host(&self.host, host)
+        crate::extension::host_pattern_matches(&self.host, host)
     }
 
     #[must_use]

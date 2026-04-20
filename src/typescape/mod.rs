@@ -379,6 +379,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Persistent sidebar webview — URL, position, width (clamped [120, 800]), pinned flag, space + host gates (ANDed), hibernation timeout. Absorbs Arc sidebar apps, Opera sidebar messengers, Vivaldi web panels."),
         mk("defsplit", "split::SplitSpec",
            "Declarative split-view layout — Horizontal/Vertical/Grid tiling of N panes with flexbox-style weights. proportional_sizes() returns pixel widths for any axis_size. Absorbs Arc Split View, Vivaldi tile-tabs, Safari two-pane."),
+        mk("defspoof", "spoof::SpoofSpec",
+           "Fingerprint-resistance profile — per-host control over User-Agent, canvas/WebGL/audio noise (passthrough/constant/randomize/block), timezone, language, letterboxing, client-hints stripping, referrer policy. Absorbs Tor Browser, Brave fingerprint randomization, Firefox resistFingerprinting, Safari ITP."),
+        mk("defdns", "dns::DnsSpec",
+           "DNS resolver preference — protocol (system/UDP/DoT/DoH/DoQ/AnonymizedDnscrypt/ODoH), endpoint, bootstrap IP, cache TTL, privacy tier (legacy/standard/strict/isolated), bypass + block suffix lists. Absorbs Firefox/Chrome DoH, iOS Private Relay, pleme-io's kurayami."),
+        mk("defrouting", "routing::RoutingSpec",
+           "Per-host network routing — direct / tunnel:<name> (mamorigami) / tor:<isolation> (kakuremino) / socks5:<url> / pt:<transport> (maboroshi). Kill-switch + fallback semantics. Absorbs Firefox Multi-Account Containers + Mozilla VPN, Tor Browser circuit-per-origin, per-tab proxy switching."),
     ]
 }
 
@@ -520,8 +526,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            34,
-            "34 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            37,
+            "37 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -644,7 +650,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        34"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        37"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

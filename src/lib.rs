@@ -68,6 +68,7 @@ pub mod media_session;
 pub mod multiplayer_cursor;
 pub mod navigation_intent;
 pub mod net;
+pub mod network_throttle;
 pub mod normalize;
 pub mod offline;
 pub mod omnibox;

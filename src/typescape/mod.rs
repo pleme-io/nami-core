@@ -501,6 +501,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Mobile viewport policy — ViewportWidth (DeviceWidth/FixedPx/FixedEm/Passthrough) with width_px + width_em when fixed, initial/min/max scale floats, UserScalable (Passthrough/ForceYes/ForceNo) — default ForceYes overrides hostile `user-scalable=no` (accessibility win), Inset set (Top/Right/Bottom/Left) with min_inset_* per-side floors max()'d against platform value, Orientation (Any/Portrait/Landscape/PortraitPrimary/PortraitSecondary/LandscapePrimary/LandscapeSecondary/Natural), ViewportFit (Auto/Contain/Cover), theme_color + color_scheme overrides. render_meta() emits the synthesized `<meta name=viewport>` string with proper formatting. clamp_scale, allows_user_zoom, effective_inset, exposes pure predicates. Absorbs `<meta name=viewport>` + CSS env(safe-area-inset-*) + Screen Orientation API + Android accessibility force-zoom."),
         mk("defcsp-policy", "csp_policy::CspPolicySpec",
            "**Novel — browsers ship CSP as opaque header, no typed build API exists.** Typed Content-Security-Policy builder. 15-variant Source enum (None/Self_/UnsafeInline/UnsafeEval/StrictDynamic/UnsafeHashes/WasmUnsafeEval/Origin(str)/Scheme(str)/Nonce(str)/Sha256|384|512(str)/Wildcard/ReportTo(str)) rendered with canonical quoting. All 24 Level 3 directives as typed Vec<Source> fields + sandbox tokens + trusted_types + require_trusted_types_for + report_to + report_uri + upgrade_insecure_requests + block_all_mixed_content + Mode (Enforce/ReportOnly) flipping the header_name() accessor. render() emits spec-valid canonical header value; validate() returns CspError for mutual-exclusion foot-guns (UnsafeInline-with-Nonce, UnsafeInline-with-StrictDynamic, StrictDynamic-without-bootstrap, Wildcard-with-Self, origin-with-whitespace, invalid-sandbox-token, report_uri-deprecated-without-report_to)."),
+        mk("defnetwork-throttle", "network_throttle::NetworkThrottleSpec",
+           "DevTools network throttling — Preset (Unthrottled/Offline/Slow3G/Fast3G/Regular4G/Good4G/Wifi/Cable/Dsl/DialUp/Custom) with effective() expanding to spec-valid (download_kbps, upload_kbps, latency_ms) tuple matching Chrome DevTools presets verbatim. download_kbps + upload_kbps + latency_ms when Custom, packet_loss_pct + jitter_ms always honored, offline flag wins over preset, timeout_pct enables chaos-testing per-request timeouts, exempt_hosts allow-list bypasses throttling (metrics endpoints). admits(host) pure predicate; clamped_packet_loss + clamped_timeout bound inputs to [0,100]. Absorbs Chrome DevTools Network conditions + Firefox Developer Tools throttling + Safari Web Inspector network throttling."),
     ]
 }
 
@@ -642,8 +644,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            95,
-            "95 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            96,
+            "96 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -766,7 +768,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        95"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        96"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

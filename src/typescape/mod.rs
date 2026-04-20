@@ -385,6 +385,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "DNS resolver preference — protocol (system/UDP/DoT/DoH/DoQ/AnonymizedDnscrypt/ODoH), endpoint, bootstrap IP, cache TTL, privacy tier (legacy/standard/strict/isolated), bypass + block suffix lists. Absorbs Firefox/Chrome DoH, iOS Private Relay, pleme-io's kurayami."),
         mk("defrouting", "routing::RoutingSpec",
            "Per-host network routing — direct / tunnel:<name> (mamorigami) / tor:<isolation> (kakuremino) / socks5:<url> / pt:<transport> (maboroshi). Kill-switch + fallback semantics. Absorbs Firefox Multi-Account Containers + Mozilla VPN, Tor Browser circuit-per-origin, per-tab proxy switching."),
+        mk("defoutline", "outline::OutlineSpec",
+           "Table-of-contents extraction profile — heading-level bounds, include/exclude selectors, optional slug-id generation, nested vs flat output. Pairs with (defreader). Absorbs Firefox Reader inline outline, Chrome Reading Mode TOC, Safari Reader structure."),
+        mk("defannotate", "annotate::AnnotateSpec",
+           "Highlight + comment profile — color palette, default color, shareable flag, max-comment cap, storage namespace. Annotation shape uses TextQuoteSelector (Hypothesis-compatible) for resilient anchoring, plus CSS selector + byte-range fallbacks. content_id hashes intrinsic fields to a 26-char base32 slug (tameshi-shape). Absorbs hypothes.is, Diigo, Safari PDF annotations."),
+        mk("deffeed", "feed::FeedSpec",
+           "RSS/Atom subscription — URL, cadence (clamped [60, 86400]s), category, max-items cap, storage name, enabled toggle. Registry enforces unique names, extends() drops invalid entries with a warning. Absorbs Opera Reader, NetNewsWire, Feedly OPML, Firefox Live Bookmarks."),
     ]
 }
 
@@ -526,8 +532,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            37,
-            "37 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            40,
+            "40 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -650,7 +656,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        37"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        40"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

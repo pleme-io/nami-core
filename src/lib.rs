@@ -16,6 +16,7 @@
 pub mod accessibility;
 pub mod agent;
 pub mod alias;
+pub mod annotate;
 pub mod blocker;
 pub mod boost;
 pub mod command;
@@ -33,6 +34,7 @@ pub mod effect;
 #[cfg(feature = "eval")]
 pub mod eval;
 pub mod extension;
+pub mod feed;
 pub mod find;
 pub mod framework;
 pub mod gesture;
@@ -45,6 +47,7 @@ pub mod lisp;
 pub mod net;
 pub mod normalize;
 pub mod omnibox;
+pub mod outline;
 pub mod pip;
 pub mod plan;
 pub mod predicate;

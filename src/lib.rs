@@ -79,6 +79,8 @@ pub mod route;
 pub mod routing;
 pub mod scrape;
 pub mod script_policy;
+pub mod search_bang;
+pub mod search_engine;
 pub mod secure_note;
 pub mod security_policy;
 pub mod selector;

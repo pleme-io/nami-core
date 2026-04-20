@@ -459,6 +459,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Tab hibernation policy — inactive_seconds threshold, DiscardState (DiscardAll/KeepScroll/KeepForm/KeepScreenshot/KeepDom) memory-survivor spectrum, per-host exempt list, keep_audio + keep_pinned + keep_form_dirty + keep_active_transfer safety rails, MemoryPressure gate (Any/Moderate/High/Critical) with ordered rank, max_resident_bytes floor. TabSnapshot + should_hibernate() pure decision. Absorbs Chrome Memory Saver, Edge Sleeping Tabs, Vivaldi Tab Hibernation, Firefox Tab Unloading."),
         mk("deftab-preview", "tab_preview::TabPreviewSpec",
            "Hover tab-preview shape — PreviewShape (Tooltip/Compact/Rich/Full/None), PreviewField set (Screenshot/Title/Url/Favicon/Subtitle/AudioState/LoadingState/Security), delay_ms, width_px × height_px with aspect_ratio() helper, follow_cursor vs anchored-to-strip, live_update screenshot refresh cadence, respect_reduced_motion. Absorbs Chrome hover-card, Edge vertical-tab preview, Vivaldi Tab Preview, Safari tab preview."),
+        mk("defsearch-engine", "search_engine::SearchEngineSpec",
+           "Declarative search engine — URL template with %s / {query} substitution, omnibox keyword shortcut, QueryEncoding (PercentPlus/PercentStrict/Raw), SearchMethod (Get/Post) with post_body template, default flag, SearchCategory (13 kinds: Web/Images/Videos/News/Shopping/Maps/Code/Social/Academic/Ai/Developer/Reference/Other), favicon, auth_cookies, priority tiebreak. render_url / render_suggest / render_body helpers. Registry indexes by name + keyword + category + default. Absorbs Chrome custom search engines, Firefox keyword searches, Safari search providers, Brave/Vivaldi/Arc custom engines."),
+        mk("defsearch-bang", "search_bang::SearchBangSpec",
+           "!bang shortcut — trigger text (without !), target engine name OR direct URL template (url takes precedence), BangPosition (Leading/Trailing/Either) for where in the input the token appears, case_insensitive toggle, category + priority tiebreak, favicon. detect() strips the matched token from input; registry scans all enabled bangs and returns highest-priority match. Absorbs DuckDuckGo's 13,000+ bangs and Kagi's curated bang list as one declarative form per bang."),
     ]
 }
 
@@ -600,8 +604,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            74,
-            "74 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            76,
+            "76 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -724,7 +728,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        74"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        76"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

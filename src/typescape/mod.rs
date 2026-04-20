@@ -481,6 +481,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Per-host permission decision tree — 24 Permission kinds (Camera/Microphone/Geolocation/Notifications/PersistentStorage/ClipboardRead/ClipboardWrite/Midi/BackgroundSync/IdleDetection/ScreenWake/Usb/Serial/Hid/Bluetooth/NfcRead/AmbientLightSensor/Popups/Push/AutoplayWithSound/DisplayCapture/ProtectedMedia/PaymentHandler/Custom), Decision enum (Allow/Block/Prompt/PromptEphemeral/RequireUserGesture/BlockWithBadge), require_user_gesture allow-list on top of base decision, allow_hosts upgrades Block→Allow, block_hosts force-Block (precedes allow). decide(perm, host) pure function. Absorbs Chrome/Firefox/Safari permission UIs + Brave Shields + Arc site settings."),
         mk("defpermission-prompt", "permission_prompt::PermissionPromptSpec",
            "Declarative permission-prompt UX — PromptStyle (Modal/Anchored/QuietBadge/Toast/Interstitial/None), remember_days + deny_after_seconds timers, FocusSteal (Immediate/None/Foreground), group_related for bundling camera+mic into one ask, text_template with {origin}/{permission} tokens, icon_url override, permissions allow-list + exclude_permissions block-list, offer_permanent (don't-ask-again checkbox), priority tiebreak. resolve(permission, host) picks host-and-permission-specific over wildcard, priority-ordered within each tier. Absorbs Chrome quiet UI, Firefox permission panel, Safari pop-over, Brave shield."),
+        mk("defresource-hint", "resource_hint::ResourceHintSpec",
+           "Declarative <link rel=…> resource hint — HintKind (Preconnect/DnsPrefetch/Preload/Prefetch/ModulePreload/EarlyHints), AsKind (13 options: Fetch/Script/Style/Image/Font/Audio/Video/Track/Document/Worker/Object/Embed/None), mime_type, crossorigin, integrity SRI, FetchPriority (Auto/Low/High), media query, InjectTiming (OnParse/OnMainLoad/OnIdle/OnInteraction), priority tiebreak. render_link() emits the <link> HTML with proper quoting. Absorbs Chrome/Firefox/Safari resource hints + Chrome Priority Hints + HTTP 103 Early Hints declaration."),
+        mk("defbfcache-policy", "bfcache_policy::BfcachePolicySpec",
+           "Back/Forward Cache tuning — Eligibility (Off/Automatic/Aggressive/OptIn), ttl_seconds (clamped ≤3600), max_cached page count, Disqualifier set (15 reasons: Beforeunload/Unload/PagehideWithFetch/OpenWebsocket/OpenWebrtc/SensorWatcher/IndexedDbInFlight/OpenMessageChannel/SwControllerChange/CacheControlNoStore/HttpError/CertError/UnhandledRejection/OpenDialog/PictureInPicture), allow_with_ws + allow_with_webrtc opt-backs, preserve_scroll + preserve_form + fire_pageshow toggles, ScrollRestoration (Auto/Manual/Reset), max_page_memory_mb cap. is_eligible(PageSignal) is a pure decision function. Absorbs Chrome/Firefox bfcache + Safari Page Cache."),
+        mk("defprerender-rule", "prerender_rule::PrerenderRuleSpec",
+           "Chrome Speculation Rules + prerender declaration — SpeculationMode (Prefetch/Prerender), Eagerness (Conservative/Moderate/Eager/Immediate) matching the spec verbatim, SelectorKind (Explicit/SameOrigin/HrefPrefix/HrefRegex/DomSelector) with `urls`/`where_prefix`/`where_regex`/`where_selector` fields, RelativeTo (Document/Ruleset), max_concurrent cap, exclude_hosts, NetworkIsolation (None/AnonymousClientIpCrossOrigin), honor_save_data (respect data-saver), max_prerender_memory_mb cap. would_speculate(doc_host, href) pure predicate (handles same-origin resolution + absolute + relative URLs). Absorbs Chrome Speculation Rules API + Firefox rel=prerender + Safari prerender hints."),
     ]
 }
 
@@ -622,8 +628,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            85,
-            "85 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            88,
+            "88 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -746,7 +752,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        85"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        88"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

@@ -19,7 +19,7 @@
 //! The root Merkle aggregator walks every repo's manifest to produce
 //! the system-wide attestation.
 //!
-//! nami-core's contribution: **101 DSL keywords + 4 AST domains + 31
+//! nami-core's contribution: **102 DSL keywords + 4 AST domains + 31
 //! canonical vocabulary tags + 4 WASM host APIs + 6 feature flags +
 //! 3 provenance attrs**. Export via `manifest_yaml()` to produce the
 //! `.typescape.yaml` that arch-synthesizer's aggregator consumes.
@@ -515,6 +515,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "GDPR/cookie-consent-banner auto-dismiss — Preference (RejectAll/Minimal/AcceptAll/HideOnly/Passthrough), banner_selectors + reject_selectors + minimal_selectors + accept_selectors + fallback_selectors CSS lists, FallbackAction (Hide/LeaveAlone/ClickFallback/Reload) when the preferred button isn't found within timeout_ms, hide_flash flag injects display:none CSS before the click to prevent visible banner flicker, remember_choice drops a LocalStorage marker emulating a real reject, max_attempts retry ceiling, audit_dismissals hook to (defaudit-trail), exempt_hosts + priority tiebreak. preferred_selectors() dispatches on Preference (Minimal falls back to reject when minimal empty); render_hide_css() emits the CSS hide rule; clicks_any() + should_hide_flash() pure predicates. Default selectors cover OneTrust / Cookiebot / Didomi / common aria-label patterns. Absorbs Brave Shields cookie-notice-blocker, Firefox Cookie Banner Blocker (ETP v3), uBlock Origin Annoyances, Consent-O-Matic, Kagi's dismisser."),
         mk("defsmart-bookmark", "smart_bookmark::SmartBookmarkSpec",
            "**Novel — browsers ship bookmarks as static (url, title, favicon) triples.** LLM-augmented bookmarks: EnrichmentField set (10 kinds: Title/Tags/Summary/Topics/KeyQuotes/NamedEntities/ReadingTime/Sentiment/ContentId/Thumbnail), llm profile name (points to a defllm-provider), auto_tag + max_tags + dedupe_tags (case-insensitive), auto_summary + summary_template with {title}/{tl-dr}/{topics-N}/{tags}/{url} token rendering + summary_chars soft cap, auto_relate + related_limit + RelatedMetric (EmbeddingCosine/Bm25TitleTags/JaccardTags/Random) + related_threshold clamped [0,1], IndexTrigger (OnSave/OnSaveAndPeriodic/Manual/OnSyncUpdate) + reindex_hours cadence, redact_secrets scrub, sync_enrichment ship via defsync (one device indexes once, others inherit), audit hook to defaudit-trail, exempt_hosts allow-list. Pure helpers: shape_tags (trim+dedupe+cap), render_summary (template with {topics-N} repeat-token expansion), clamped_threshold. Composes with defllm-provider + defsummarize + defsync + defaudit-trail."),
+        mk("deftext-spacing", "text_spacing::TextSpacingSpec",
+           "WCAG 1.4.12 text-spacing override — line_height (≥1.5 floor), paragraph_spacing (≥2.0 em), letter_spacing (≥0.12em), word_spacing (≥0.16em) as f32 multipliers, FontOverride (None/OpenDyslexic/AtkinsonHyperlegible/Lexend/SystemUi/Monospace/Serif) plus freeform font_family override, min_font_px floor, max_line_width_ch cap (typography + accessibility), underline_links / remove_italics / remove_text_effects a11y toggles, enforce flag appends !important on every rule so page CSS can't override. is_wcag_compliant() checks all four floors; resolved_font() maps override enum to a font-family stack; render_css() emits the complete stylesheet ready to inject. Absorbs stylesheet bookmarklets (Stylebot, Readable, Stylish) + Firefox 'Always override page fonts' prefs."),
     ]
 }
 
@@ -656,8 +658,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            101,
-            "101 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            102,
+            "102 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -781,7 +783,7 @@ mod tests {
         // Load-bearing count — adding a new DSL means also bumping
         // the `dsls: N` line here, which catches drift between the
         // module registry and this manifest.
-        assert!(yaml.contains("dsls:        101"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        102"), "yaml: {yaml}");
         // 4 AST domains currently: html + jsx + svelte + css.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs (WASM).

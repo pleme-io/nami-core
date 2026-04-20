@@ -74,16 +74,16 @@ proptest = "1"
 criterion = { version = "0.7", default-features = false, features = ["rayon"] }
 # RNG for generating test keypairs.
 rand = "0.8"
-
-[[bench]]
-name = "storage_kv"
-harness = false
-path = "benches/storage_kv.rs"
 # Compile WAT (WebAssembly text format) inline in tests — lets us
 # verify WASM host behavior against small handwritten modules
 # without needing to ship binary blobs.
 wat = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[[bench]]
+name = "storage_kv"
+harness = false
+path = "benches/storage_kv.rs"
 
 [profile.release]
 codegen-units = 1

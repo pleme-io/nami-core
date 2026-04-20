@@ -453,6 +453,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Service-worker lifecycle + fetch-interception DSL — LifecycleEvent set (Install/Activate/Fetch/Message/Push/Sync/PeriodicSync/NotificationClick), scope path prefix, runtime name (links to defjs-runtime capability set), skip_waiting + client_claim, WorkerRoute list with Workbox-style path globs + CacheStrategy (CacheFirst/NetworkFirst/StaleWhileRevalidate/NetworkOnly/CacheOnly) + timeout_seconds + max_age_seconds + max_entries + cache_name override, max_cache_mb total cap, offline_fallback page, periodic_sync_seconds wake cadence. Absorbs Chrome/Firefox/Safari Service Worker API + Workbox routing patterns."),
         mk("defsync", "sync_channel::SyncSpec",
            "Cross-device replication — SyncSignal (13 kinds: Bookmarks/History/Tabs/OpenWindows/Passwords/Passkeys/Sessions/Extensions/Settings/ReadingList/Annotations/Downloads/Custom), SyncDirection (Push/Pull/Bidirectional), SyncCrdt (YCrdt/Automerge/LwwElementSet/OpLog), SyncTransport (Nats/Websocket/DirectP2p/Local), ConflictPolicy (LastWriterWins/KeepBoth/PreferDevice/CrdtNative), topic template with {device}/{profile}/{signal} tokens, isolation_token scope, preferred_device tiebreak, encryption, throttle_ms delta coalescing, buffer_max, peer_devices allow-list, retention_days, full_sync_interval_seconds. Absorbs Chrome Sync, Firefox Sync v5, Safari iCloud, Arc Spaces sync, 1Password/Bitwarden vault sync."),
+        mk("deftab-group", "tab_group::TabGroupSpec",
+           "Tab-group profile — GroupColor palette (10 colors incl. Custom with hex override), host-glob auto-match list, collapsed + pinned states, icon glyph, GroupIsolation (None/PerProfile/PerWindow/Ephemeral) for per-group cookie jars (Firefox Containers), max_tabs cap, close_when_empty, resolved_color() returns palette hex or custom. Absorbs Chrome Tab Groups, Firefox Containers, Vivaldi Tab Stacks, Arc Spaces, Edge Collections, Safari Tab Groups."),
+        mk("deftab-hibernate", "tab_hibernate::TabHibernateSpec",
+           "Tab hibernation policy — inactive_seconds threshold, DiscardState (DiscardAll/KeepScroll/KeepForm/KeepScreenshot/KeepDom) memory-survivor spectrum, per-host exempt list, keep_audio + keep_pinned + keep_form_dirty + keep_active_transfer safety rails, MemoryPressure gate (Any/Moderate/High/Critical) with ordered rank, max_resident_bytes floor. TabSnapshot + should_hibernate() pure decision. Absorbs Chrome Memory Saver, Edge Sleeping Tabs, Vivaldi Tab Hibernation, Firefox Tab Unloading."),
+        mk("deftab-preview", "tab_preview::TabPreviewSpec",
+           "Hover tab-preview shape — PreviewShape (Tooltip/Compact/Rich/Full/None), PreviewField set (Screenshot/Title/Url/Favicon/Subtitle/AudioState/LoadingState/Security), delay_ms, width_px × height_px with aspect_ratio() helper, follow_cursor vs anchored-to-strip, live_update screenshot refresh cadence, respect_reduced_motion. Absorbs Chrome hover-card, Edge vertical-tab preview, Vivaldi Tab Preview, Safari tab preview."),
     ]
 }
 
@@ -594,8 +600,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            71,
-            "71 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            74,
+            "74 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -718,7 +724,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        71"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        74"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

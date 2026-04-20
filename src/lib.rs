@@ -97,6 +97,7 @@ pub mod storage;
 pub mod store;
 pub mod subtitle;
 pub mod summarize;
+pub mod sync_channel;
 pub mod transform;
 pub mod typescape;
 pub mod url_clean;

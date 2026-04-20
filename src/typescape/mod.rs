@@ -451,6 +451,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Live cursor visualization — CursorStyle (Pointer/Caret/Crosshair/Dot/Hand/CustomSvg), palette color list (round-robin per session), name_tag, fade_after_seconds, click_echo ripple, follow_mode camera jump, CursorScope (PerTab/PerProfile/Global), crowd_threshold hide-at-N, smoothing coefficient clamped [0,1], respect_reduced_motion. Absorbs Figma cursor chat, Excalidraw live cursors, tldraw multiplayer pointers, Arc Easels."),
         mk("defservice-worker", "service_worker::ServiceWorkerSpec",
            "Service-worker lifecycle + fetch-interception DSL — LifecycleEvent set (Install/Activate/Fetch/Message/Push/Sync/PeriodicSync/NotificationClick), scope path prefix, runtime name (links to defjs-runtime capability set), skip_waiting + client_claim, WorkerRoute list with Workbox-style path globs + CacheStrategy (CacheFirst/NetworkFirst/StaleWhileRevalidate/NetworkOnly/CacheOnly) + timeout_seconds + max_age_seconds + max_entries + cache_name override, max_cache_mb total cap, offline_fallback page, periodic_sync_seconds wake cadence. Absorbs Chrome/Firefox/Safari Service Worker API + Workbox routing patterns."),
+        mk("defsync", "sync_channel::SyncSpec",
+           "Cross-device replication — SyncSignal (13 kinds: Bookmarks/History/Tabs/OpenWindows/Passwords/Passkeys/Sessions/Extensions/Settings/ReadingList/Annotations/Downloads/Custom), SyncDirection (Push/Pull/Bidirectional), SyncCrdt (YCrdt/Automerge/LwwElementSet/OpLog), SyncTransport (Nats/Websocket/DirectP2p/Local), ConflictPolicy (LastWriterWins/KeepBoth/PreferDevice/CrdtNative), topic template with {device}/{profile}/{signal} tokens, isolation_token scope, preferred_device tiebreak, encryption, throttle_ms delta coalescing, buffer_max, peer_devices allow-list, retention_days, full_sync_interval_seconds. Absorbs Chrome Sync, Firefox Sync v5, Safari iCloud, Arc Spaces sync, 1Password/Bitwarden vault sync."),
     ]
 }
 
@@ -592,8 +594,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            70,
-            "70 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            71,
+            "71 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -716,7 +718,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        70"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        71"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

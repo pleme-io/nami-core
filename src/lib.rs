@@ -106,6 +106,7 @@ pub mod shadow;
 pub mod share;
 pub mod sidebar;
 pub mod simplify;
+pub mod smart_bookmark;
 pub mod snapshot;
 pub mod space;
 pub mod split;

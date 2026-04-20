@@ -19,7 +19,7 @@
 //! The root Merkle aggregator walks every repo's manifest to produce
 //! the system-wide attestation.
 //!
-//! nami-core's contribution: **100 DSL keywords + 4 AST domains + 31
+//! nami-core's contribution: **101 DSL keywords + 4 AST domains + 31
 //! canonical vocabulary tags + 4 WASM host APIs + 6 feature flags +
 //! 3 provenance attrs**. Export via `manifest_yaml()` to produce the
 //! `.typescape.yaml` that arch-synthesizer's aggregator consumes.
@@ -513,6 +513,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "**Novel — browsers scatter 'close other tabs' / 'mute all' as one-off menu items; nobody gives authors named, declarative, atomic multi-tab primitives.** Trigger (Command/Hotkey/Omnibox/AutoMatch/Periodic), Matcher struct (host_globs + title_contains + url_regex + pinned_only/not_pinned + in_group + created_before_days + playing_audio/silent + exclude_active), Action (14 kinds: Close/Reload/Duplicate/MoveToGroup/Pin/Unpin/Mute/Unmute/Hibernate/Discard/RewriteUrl/EvalScript/BookmarkAll/Overview), ActionPayload carrying target_group + url_template + script + runtime + bookmark_folder, atomic flag (all-or-none), dry_run mode, max_tabs safety ceiling, interval_seconds for Periodic, confirm_destructive toggle, hotkey + omnibox_alias bindings. is_destructive() flags risky actions; matches(TabView) + matched_indices() + render_rewrite() pure helpers. Default sample is DISABLED (destructive-capable)."),
         mk("defcookie-banner", "cookie_banner::CookieBannerSpec",
            "GDPR/cookie-consent-banner auto-dismiss — Preference (RejectAll/Minimal/AcceptAll/HideOnly/Passthrough), banner_selectors + reject_selectors + minimal_selectors + accept_selectors + fallback_selectors CSS lists, FallbackAction (Hide/LeaveAlone/ClickFallback/Reload) when the preferred button isn't found within timeout_ms, hide_flash flag injects display:none CSS before the click to prevent visible banner flicker, remember_choice drops a LocalStorage marker emulating a real reject, max_attempts retry ceiling, audit_dismissals hook to (defaudit-trail), exempt_hosts + priority tiebreak. preferred_selectors() dispatches on Preference (Minimal falls back to reject when minimal empty); render_hide_css() emits the CSS hide rule; clicks_any() + should_hide_flash() pure predicates. Default selectors cover OneTrust / Cookiebot / Didomi / common aria-label patterns. Absorbs Brave Shields cookie-notice-blocker, Firefox Cookie Banner Blocker (ETP v3), uBlock Origin Annoyances, Consent-O-Matic, Kagi's dismisser."),
+        mk("defsmart-bookmark", "smart_bookmark::SmartBookmarkSpec",
+           "**Novel — browsers ship bookmarks as static (url, title, favicon) triples.** LLM-augmented bookmarks: EnrichmentField set (10 kinds: Title/Tags/Summary/Topics/KeyQuotes/NamedEntities/ReadingTime/Sentiment/ContentId/Thumbnail), llm profile name (points to a defllm-provider), auto_tag + max_tags + dedupe_tags (case-insensitive), auto_summary + summary_template with {title}/{tl-dr}/{topics-N}/{tags}/{url} token rendering + summary_chars soft cap, auto_relate + related_limit + RelatedMetric (EmbeddingCosine/Bm25TitleTags/JaccardTags/Random) + related_threshold clamped [0,1], IndexTrigger (OnSave/OnSaveAndPeriodic/Manual/OnSyncUpdate) + reindex_hours cadence, redact_secrets scrub, sync_enrichment ship via defsync (one device indexes once, others inherit), audit hook to defaudit-trail, exempt_hosts allow-list. Pure helpers: shape_tags (trim+dedupe+cap), render_summary (template with {topics-N} repeat-token expansion), clamped_threshold. Composes with defllm-provider + defsummarize + defsync + defaudit-trail."),
     ]
 }
 
@@ -654,8 +656,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            100,
-            "100 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            101,
+            "101 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -779,7 +781,7 @@ mod tests {
         // Load-bearing count — adding a new DSL means also bumping
         // the `dsls: N` line here, which catches drift between the
         // module registry and this manifest.
-        assert!(yaml.contains("dsls:        100"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        101"), "yaml: {yaml}");
         // 4 AST domains currently: html + jsx + svelte + css.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs (WASM).

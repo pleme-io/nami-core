@@ -44,7 +44,7 @@ pub struct SecurityPolicySpec {
     /// Host glob pattern — `"*"` matches any, `"*://*.example.com/*"`
     /// matches subdomains. WebExtensions-compatible syntax, reuses
     /// the matcher from the extension module.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Raw CSP header value. Emitted as `Content-Security-Policy:`.
     /// None → no CSP header emitted.
@@ -88,9 +88,6 @@ pub struct SecurityPolicySpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 
 /// Rendered HTTP headers ready for the fetch pipeline / outbound
 /// response. Caller emits each `(name, value)` pair verbatim.

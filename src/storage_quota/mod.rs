@@ -93,7 +93,7 @@ impl Default for SurfaceCaps {
 #[serde(rename_all = "camelCase")]
 pub struct StorageQuotaSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Top-level bytes per origin. 0 = unlimited (only surface caps
     /// apply). The caller enforces `min(surface_cap, remaining_total)`.
@@ -144,9 +144,6 @@ pub struct StorageQuotaSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_total_bytes() -> u64 {
     1024 * 1024 * 1024
 }

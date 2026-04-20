@@ -97,7 +97,7 @@ pub enum ScrollRestoration {
 #[serde(rename_all = "camelCase")]
 pub struct BfcachePolicySpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub eligibility: Eligibility,
@@ -143,9 +143,6 @@ pub struct BfcachePolicySpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_disqualify() -> Vec<Disqualifier> {
     vec![
         Disqualifier::Beforeunload,

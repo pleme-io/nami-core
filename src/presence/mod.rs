@@ -69,7 +69,7 @@ pub enum BroadcastField {
 pub struct PresenceSpec {
     pub name: String,
     /// Host glob the profile fires on. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub transport: PresenceTransport,
@@ -103,9 +103,6 @@ pub struct PresenceSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_topic_template() -> String {
     "presence.{origin}.{path}".into()
 }

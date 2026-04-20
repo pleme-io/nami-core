@@ -88,7 +88,7 @@ pub enum Decision {
 #[serde(rename_all = "camelCase")]
 pub struct PermissionPolicySpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub camera: Decision,
@@ -152,9 +152,6 @@ pub struct PermissionPolicySpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_block_sensitive() -> Decision {
     Decision::Block
 }

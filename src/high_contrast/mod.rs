@@ -69,7 +69,7 @@ impl Default for SchemeOverride {
 pub struct HighContrastSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Minimum contrast ratio to enforce. The engine rewrites
     /// foreground colors toward the target when a computed style
@@ -107,9 +107,6 @@ pub struct HighContrastSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_min_ratio() -> f32 {
     4.5
 }

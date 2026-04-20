@@ -56,7 +56,7 @@ pub enum TrackKind {
 #[serde(rename_all = "camelCase")]
 pub struct AutoplaySpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub policy: AutoplayPolicy,
@@ -92,9 +92,6 @@ pub struct AutoplaySpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_muted_video_ok() -> bool {
     true
 }

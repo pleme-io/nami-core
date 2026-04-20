@@ -46,7 +46,7 @@ use tatara_lisp::DeriveTataraDomain;
 pub struct BoostSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Raw CSS to append to the page `<head>` after matched navigate.
     #[serde(default)]
@@ -71,9 +71,6 @@ pub struct BoostSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_enabled() -> bool {
     true
 }

@@ -63,7 +63,7 @@ pub enum PreviewField {
 #[serde(rename_all = "camelCase")]
 pub struct TabPreviewSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub shape: PreviewShape,
@@ -97,9 +97,6 @@ pub struct TabPreviewSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_content() -> Vec<PreviewField> {
     vec![
         PreviewField::Screenshot,

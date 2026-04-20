@@ -85,7 +85,7 @@ pub struct ConsoleRuleSpec {
     #[serde(default)]
     pub pattern: String,
     /// Host glob the rule is scoped to. Empty / `"*"` = every host.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub action: ConsoleAction,
@@ -117,9 +117,6 @@ pub struct ConsoleRuleSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_enabled() -> bool {
     true
 }

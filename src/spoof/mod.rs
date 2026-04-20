@@ -68,7 +68,7 @@ impl Default for SpoofMode {
 pub struct SpoofSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Replacement `User-Agent`. `"native"` = don't rewrite. `"random-pool"`
     /// tells the pipeline to pick from a stock rotation; any other
@@ -104,9 +104,6 @@ pub struct SpoofSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_user_agent() -> String {
     "native".into()
 }

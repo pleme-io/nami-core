@@ -93,7 +93,7 @@ pub enum ShaderFeatureSet {
 #[serde(rename_all = "camelCase")]
 pub struct WebgpuPolicySpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub access: GpuAccess,
@@ -135,9 +135,6 @@ pub struct WebgpuPolicySpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_enabled() -> bool {
     true
 }

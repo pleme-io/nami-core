@@ -304,6 +304,14 @@ pub(crate) fn base32_16(bytes: &[u8]) -> String {
     out
 }
 
+/// Canonical `"*"` host glob for serde defaults — equivalent to
+/// `fn default_host() -> String { "*".into() }` repeated across 40+
+/// DSL modules. Use as `#[serde(default = "crate::extension::default_star_host")]`.
+#[must_use]
+pub(crate) fn default_star_host() -> String {
+    "*".into()
+}
+
 /// Uppercase RFC 4648 base32 encoder (no padding). Used by the
 /// pleme-io attestation family (audit_trail / time_travel /
 /// tab_attestation) — shares the tameshi / sekiban / kensa / inshou

@@ -85,7 +85,7 @@ pub enum CaptureField {
 #[serde(rename_all = "camelCase")]
 pub struct TimeTravelSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Interval between `Trigger::Interval` samples.
     #[serde(default = "default_sample_ms")]
@@ -126,9 +126,6 @@ pub struct TimeTravelSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_sample_ms() -> u32 {
     1_000
 }

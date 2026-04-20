@@ -94,7 +94,7 @@ pub struct SnapshotSpec {
     #[serde(default)]
     pub element_id: Option<String>,
     /// Host glob; `"*"` matches all.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// When true, callers should BLAKE3 the captured bytes and
     /// attach the hash to a SignatureBundle (sekiban-compatible).
@@ -109,9 +109,6 @@ fn default_scale() -> f32 {
 }
 fn default_quality() -> f32 {
     0.9
-}
-fn default_host() -> String {
-    "*".into()
 }
 
 impl SnapshotSpec {

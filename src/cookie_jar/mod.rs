@@ -96,7 +96,7 @@ pub enum ClearTrigger {
 #[serde(rename_all = "camelCase")]
 pub struct CookieJarSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub partition: Partition,
@@ -133,9 +133,6 @@ pub struct CookieJarSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_max_cookies() -> u32 {
     600
 }

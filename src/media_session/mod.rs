@@ -94,7 +94,7 @@ impl MetadataSelectors {
 pub struct MediaSessionSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Actions exposed to the OS. Empty = every action.
     #[serde(default = "default_actions")]
@@ -114,9 +114,6 @@ pub struct MediaSessionSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_actions() -> Vec<MediaAction> {
     vec![
         MediaAction::Play,

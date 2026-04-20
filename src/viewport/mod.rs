@@ -104,7 +104,7 @@ pub enum Orientation {
 #[serde(rename_all = "camelCase")]
 pub struct ViewportSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub width: ViewportWidth,
@@ -154,9 +154,6 @@ pub struct ViewportSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_initial_scale() -> f32 {
     1.0
 }

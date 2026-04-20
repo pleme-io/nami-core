@@ -63,7 +63,7 @@ pub enum MemoryPressure {
 pub struct TabHibernateSpec {
     pub name: String,
     /// Host glob the profile fires on. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Seconds of user inactivity on the tab before it's a candidate
     /// to hibernate. 0 = disabled.
@@ -97,9 +97,6 @@ pub struct TabHibernateSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_inactive_seconds() -> u32 {
     900 // 15 min — matches Chrome Memory Saver default.
 }

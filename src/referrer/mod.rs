@@ -56,7 +56,7 @@ pub enum ReferrerPolicy {
 pub struct ReferrerSpec {
     pub name: String,
     /// Host glob the policy applies to. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub policy: ReferrerPolicy,
@@ -84,9 +84,6 @@ pub struct ReferrerSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_strip_fragment() -> bool {
     true
 }

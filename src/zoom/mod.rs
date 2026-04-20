@@ -26,7 +26,7 @@ use tatara_lisp::DeriveTataraDomain;
 pub struct ZoomSpec {
     /// WebExtensions-style glob — reuses the extension module's matcher.
     /// `"*"` matches everything (global default).
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Zoom multiplier. Clamped to `[0.25, 5.0]` at apply time.
     pub level: f32,
@@ -37,9 +37,6 @@ pub struct ZoomSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 
 const MIN_ZOOM: f32 = 0.25;
 const MAX_ZOOM: f32 = 5.0;

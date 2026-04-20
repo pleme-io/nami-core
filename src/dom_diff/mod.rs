@@ -298,7 +298,7 @@ fn diff_attrs(
 pub struct DomDiffSpec {
     pub name: String,
     /// Host glob — `"*"` watches every page.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// CSS-tag names the watcher restricts to. Empty = all tags.
     #[serde(default)]
@@ -329,9 +329,6 @@ pub struct DomDiffSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_enabled() -> bool {
     false
 }

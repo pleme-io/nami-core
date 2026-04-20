@@ -67,7 +67,7 @@ pub enum FallbackAction {
 #[serde(rename_all = "camelCase")]
 pub struct CookieBannerSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub preference: Preference,
@@ -121,9 +121,6 @@ pub struct CookieBannerSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_banner_selectors() -> Vec<String> {
     vec![
         "#onetrust-banner-sdk".into(),

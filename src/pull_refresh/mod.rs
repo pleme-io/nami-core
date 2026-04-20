@@ -35,7 +35,7 @@ use tatara_lisp::DeriveTataraDomain;
 pub struct PullRefreshSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Pull distance in CSS pixels before firing. Clamped to `[40, 300]`.
     #[serde(default = "default_threshold")]
@@ -55,9 +55,6 @@ pub struct PullRefreshSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_threshold() -> u32 {
     80
 }

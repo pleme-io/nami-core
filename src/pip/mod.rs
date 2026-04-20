@@ -51,7 +51,7 @@ impl Default for PipPosition {
 pub struct PipSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// CSS selectors whose matches are promotable to PiP.
     /// Bare `"video"` is the universal default.
@@ -77,9 +77,6 @@ pub struct PipSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_selectors() -> Vec<String> {
     vec!["video".into()]
 }

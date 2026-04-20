@@ -59,7 +59,7 @@ pub enum FontOverride {
 #[serde(rename_all = "camelCase")]
 pub struct TextSpacingSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Minimum line-height as a multiple of font-size. WCAG floor: 1.5.
     #[serde(default = "default_line_height")]
@@ -110,9 +110,6 @@ pub struct TextSpacingSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_line_height() -> f32 {
     1.5
 }

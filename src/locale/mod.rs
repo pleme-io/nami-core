@@ -100,7 +100,7 @@ pub enum DateFormat {
 #[serde(rename_all = "camelCase")]
 pub struct LocaleSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Primary locale tag (e.g. "en-US", "ja-JP", "de-AT"). Empty =
     /// passthrough.
@@ -142,9 +142,6 @@ pub struct LocaleSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_expose_to_js() -> bool {
     true
 }

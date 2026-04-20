@@ -63,7 +63,7 @@ impl Default for RouteFallback {
 pub struct RoutingSpec {
     pub name: String,
     /// Host glob. `"*"` = everywhere.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Route strategy. Tokens:
     ///   `direct` | `tunnel:<name>` | `tor:<isolation>` |
@@ -84,9 +84,6 @@ pub struct RoutingSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 
 /// Route strategy parsed from the `via` field.
 #[derive(Debug, Clone, PartialEq, Eq)]

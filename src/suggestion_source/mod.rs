@@ -87,7 +87,7 @@ pub struct SuggestionSourceSpec {
     pub min_input_len: u32,
     /// Host glob — omnibox behavior when the user is already on a
     /// page. "*" = always.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Allow this source to propose inline completions (typed URL
     /// gets auto-completed in place).
@@ -118,9 +118,6 @@ fn default_weight() -> f32 {
 }
 fn default_max_results() -> u32 {
     6
-}
-fn default_host() -> String {
-    "*".into()
 }
 fn default_enabled() -> bool {
     true

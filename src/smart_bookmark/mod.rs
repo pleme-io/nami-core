@@ -89,7 +89,7 @@ pub enum EnrichmentField {
 pub struct SmartBookmarkSpec {
     pub name: String,
     /// Host glob that qualifies a page for smart indexing.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// `(defllm-provider)` profile name to use.
     #[serde(default = "default_llm")]
@@ -148,9 +148,6 @@ pub struct SmartBookmarkSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_llm() -> String {
     "default".into()
 }

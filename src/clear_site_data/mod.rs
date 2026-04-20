@@ -101,7 +101,7 @@ pub enum Scope {
 #[serde(rename_all = "camelCase")]
 pub struct ClearSiteDataSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default = "default_surfaces")]
     pub surfaces: Vec<Surface>,
@@ -136,9 +136,6 @@ pub struct ClearSiteDataSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_surfaces() -> Vec<Surface> {
     vec![Surface::Cache, Surface::Cookies, Surface::Storage]
 }

@@ -72,7 +72,7 @@ pub enum TabEventKind {
 pub struct TabAttestationSpec {
     pub name: String,
     /// Host glob — `"*"` applies to every tab.
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     /// Which kinds to record. Empty = all.
     #[serde(default)]
@@ -106,9 +106,6 @@ pub struct TabAttestationSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_max_entries() -> u32 {
     1000
 }

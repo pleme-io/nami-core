@@ -90,7 +90,7 @@ impl Default for Persistence {
 #[serde(rename_all = "camelCase")]
 pub struct CrdtRoomSpec {
     pub name: String,
-    #[serde(default = "default_host")]
+    #[serde(default = "crate::extension::default_star_host")]
     pub host: String,
     #[serde(default)]
     pub transport: RoomTransport,
@@ -127,9 +127,6 @@ pub struct CrdtRoomSpec {
     pub description: Option<String>,
 }
 
-fn default_host() -> String {
-    "*".into()
-}
 fn default_topic_template() -> String {
     "crdt.{origin}.{path}".into()
 }

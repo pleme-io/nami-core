@@ -463,6 +463,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Declarative search engine — URL template with %s / {query} substitution, omnibox keyword shortcut, QueryEncoding (PercentPlus/PercentStrict/Raw), SearchMethod (Get/Post) with post_body template, default flag, SearchCategory (13 kinds: Web/Images/Videos/News/Shopping/Maps/Code/Social/Academic/Ai/Developer/Reference/Other), favicon, auth_cookies, priority tiebreak. render_url / render_suggest / render_body helpers. Registry indexes by name + keyword + category + default. Absorbs Chrome custom search engines, Firefox keyword searches, Safari search providers, Brave/Vivaldi/Arc custom engines."),
         mk("defsearch-bang", "search_bang::SearchBangSpec",
            "!bang shortcut — trigger text (without !), target engine name OR direct URL template (url takes precedence), BangPosition (Leading/Trailing/Either) for where in the input the token appears, case_insensitive toggle, category + priority tiebreak, favicon. detect() strips the matched token from input; registry scans all enabled bangs and returns highest-priority match. Absorbs DuckDuckGo's 13,000+ bangs and Kagi's curated bang list as one declarative form per bang."),
+        mk("defidentity", "identity::IdentitySpec",
+           "Multi-account persona — display_name + avatar + color, vault binding (defpasswords), cookie_jar binding, default_email + default_full_name for form autofill, auto_apply_hosts glob list, IdentityIsolation (None/PerProfile/Ephemeral/OsProcess), default flag, linked totp_profiles, priority tiebreak. Registry resolves by host match (priority-ordered) → default → first-enabled. Absorbs Chrome Profiles, Firefox Containers, Arc Spaces identities, Safari Profiles (macOS 14+), Microsoft Edge Work Profiles."),
+        mk("deftotp", "totp::TotpSpec",
+           "RFC 6238 TOTP 2FA profile — base32 secret, TotpAlgorithm (Sha1/Sha256/Sha512), digits (6/7/8), period (seconds), issuer + account_name pair, linked identities + vault, icon. generate_at(seconds) + generate_now() produce zero-padded codes; seconds_remaining tracks rollover; otpauth_uri() renders the QR-code format. Real HMAC-based implementation passes RFC 6238 Appendix B vectors. Absorbs Authy, Google Authenticator, 1Password TOTP, Bitwarden TOTP, Yubico Authenticator, macOS Passwords (TOTP), Aegis."),
     ]
 }
 
@@ -604,8 +608,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            76,
-            "76 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            78,
+            "78 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -728,7 +732,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        76"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        78"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

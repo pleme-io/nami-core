@@ -61,6 +61,10 @@ wasi-common = { version = "38", optional = true }
 ed25519-dalek = { version = "2", optional = true, default-features = false, features = ["std", "rand_core"] }
 # Base64 encoding for pubkeys + signatures in manifest form.
 base64 = { version = "0.22", optional = true }
+# RFC 6238 TOTP — HMAC-SHA1/256/512 on a shared secret.
+hmac = "0.12"
+sha1 = "0.10"
+sha2 = "0.10"
 
 [dev-dependencies]
 # Property-based testing — fuzzes parsers + invariants across

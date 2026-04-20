@@ -48,6 +48,7 @@ pub mod framework;
 pub mod gesture;
 pub mod high_contrast;
 pub mod i18n;
+pub mod identity;
 #[cfg(feature = "eval")]
 pub mod inline_lisp;
 pub mod inspector;
@@ -103,6 +104,7 @@ pub mod sync_channel;
 pub mod tab_group;
 pub mod tab_hibernate;
 pub mod tab_preview;
+pub mod totp;
 pub mod transform;
 pub mod typescape;
 pub mod url_clean;

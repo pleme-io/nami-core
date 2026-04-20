@@ -17,6 +17,7 @@ pub mod accessibility;
 pub mod agent;
 pub mod alias;
 pub mod annotate;
+pub mod audit_trail;
 pub mod auth_saver;
 pub mod autofill;
 pub mod chat;

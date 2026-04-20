@@ -495,6 +495,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Per-origin storage quota + eviction — total_bytes cap plus per-surface caps (IndexedDB / CacheStorage / LocalStorage / SessionStorage / OPFS / FileSystem / Cookies) with SurfaceCaps defaults, EvictionStrategy (Lru/Largest/Age/Random/None), system_high_water_mb pressure threshold, PersistencePolicy (Deny/Allow/Prompt/HeuristicEngagement/AllowList) with allow_persist_hosts + deny_persist_hosts overrides (deny wins), honest_estimate toggle (anti-fingerprint), unused_origin_expiry_days auto-cleanup. admits_write(surface, used_on_surface, used_total, bytes) pure predicate; admits_persist(host, interaction_count) gates heuristic-engagement path. Absorbs Chrome Storage API quota, Firefox storage-pressure eviction, Safari ITP 7-day expiry."),
         mk("defclear-site-data", "clear_site_data::ClearSiteDataSpec",
            "Clear-Site-Data header + triggered clears — Surface set (12 kinds: Cache/Cookies/Storage/ExecutionContexts/ClientHints/PrefetchCache/ServiceWorkers/Channels/Permissions/SyncData/AutofillLocal/All), Trigger (HeaderDriven/OnClose/OnTabClose/OnNavigateAway/OnIdle/Periodic/Manual/OnIdentitySwitch), Scope (ThisOrigin/RegistrableDomain/AllOrigins/ThisOriginAndPartitions), interval_hours + on_idle_minutes thresholds, exempt_hosts allow-list, always_preserve per-surface keep-list, force_execution_contexts injection, grace_period_seconds warning window. should_fire(ClearTriggerInput) pure decision; effective_surfaces() filters preserve + injects forced contexts. Absorbs Clear-Site-Data HTTP header + Chrome/Firefox/Safari 'clear browsing data' UIs + Safari ITP auto-clear."),
+        mk("defaudit-trail", "audit_trail::AuditTrailSpec",
+           "**Novel — no mainstream browser ships this.** Tamper-evident audit log of substrate actions — EventKind (17 kinds: RcReload/ExtensionInstall/ExtensionUninstall/ExtensionToggle/PermissionGrant/PermissionDeny/IdentitySwitch/SyncChange/StorageClear/RoutingChange/Navigation/TotpRead/DslFailure/PermissionBlocked/CapabilityRequest/AuditClear/Custom), Sink fan-out (Memory/Disk/Syslog/Sync/RemoteHttp/Nats), ring-buffered AuditStore with append/verify API. AuditEntry Merkle-chains via BLAKE3-128 (26-char base32 matching tameshi convention) — any post-hoc tamper to details/prev_hash/content_hash is detectable. redact_secrets + rotate_bytes + record_source_text knobs. Default: DISABLED (privacy-first; opt-in only). Pairs with tameshi / sekiban / kensa attestation chain."),
     ]
 }
 
@@ -636,8 +638,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            92,
-            "92 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            93,
+            "93 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -760,7 +762,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        92"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        93"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

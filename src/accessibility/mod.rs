@@ -23,7 +23,7 @@
 //!    → text content (first non-empty) → empty.
 //! 4. **Walk order matches DOM order** so reading sequence is preserved.
 
-use crate::dom::{Document, Node, NodeData};
+use crate::dom::{Document, Node};
 use serde::{Deserialize, Serialize};
 
 /// One node in the accessibility tree.

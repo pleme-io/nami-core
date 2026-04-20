@@ -491,6 +491,10 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "History retention + privacy — Retention (Off/Session/Days/Forever/OnlyIfBookmarked) with retention_days, CaptureField set (10 fields: Title/Url/Favicon/VisitTime/VisitCount/Referrer/PageSnippet/Screenshot/NavigationType/DwellTime), Visibility (Full/LocalOnly/SuppressSuggestions/None), private_hosts glob list (banks/health/sensitive → never recorded), excluded_schemes (chrome://, about:, data:, view-source:), filter_short_typed_urls, min_dwell_seconds, cascade_delete_storage, sync + search_indexed toggles. should_record(host, url, dwell) pure predicate; retention_seconds() returns u64 (0 = session, u64::MAX = forever)."),
         mk("defnavigation-intent", "navigation_intent::NavigationIntentSpec",
            "Where new navigations open — OpenDisposition (9 dispositions: CurrentTab/NewTabForeground/NewTabBackground/NewWindow/IncognitoWindow/SameTabGroup/InlineReader/CopyLink/Block) per ClickSource (12 sources: LinkClick/MiddleClick/CmdClick/CmdShiftClick/ScriptOpen/FormTargetBlank/AnchorTargetBlank/DragDrop/Omnibox/BackForward/Reload/KeyboardShortcut). same_site_override + cross_origin_override refine by origin. popup default Block with popup_allow_hosts bypass; require_gesture_for_script_open forces Block when script-opened without user gesture; force_noopener + strip_cross_origin_referrer for link-privacy. resolve(source, same_origin, had_gesture) pure function. Absorbs Chrome/Firefox/Safari link-handling prefs + Vivaldi/Arc tab-open rules."),
+        mk("defstorage-quota", "storage_quota::StorageQuotaSpec",
+           "Per-origin storage quota + eviction — total_bytes cap plus per-surface caps (IndexedDB / CacheStorage / LocalStorage / SessionStorage / OPFS / FileSystem / Cookies) with SurfaceCaps defaults, EvictionStrategy (Lru/Largest/Age/Random/None), system_high_water_mb pressure threshold, PersistencePolicy (Deny/Allow/Prompt/HeuristicEngagement/AllowList) with allow_persist_hosts + deny_persist_hosts overrides (deny wins), honest_estimate toggle (anti-fingerprint), unused_origin_expiry_days auto-cleanup. admits_write(surface, used_on_surface, used_total, bytes) pure predicate; admits_persist(host, interaction_count) gates heuristic-engagement path. Absorbs Chrome Storage API quota, Firefox storage-pressure eviction, Safari ITP 7-day expiry."),
+        mk("defclear-site-data", "clear_site_data::ClearSiteDataSpec",
+           "Clear-Site-Data header + triggered clears — Surface set (12 kinds: Cache/Cookies/Storage/ExecutionContexts/ClientHints/PrefetchCache/ServiceWorkers/Channels/Permissions/SyncData/AutofillLocal/All), Trigger (HeaderDriven/OnClose/OnTabClose/OnNavigateAway/OnIdle/Periodic/Manual/OnIdentitySwitch), Scope (ThisOrigin/RegistrableDomain/AllOrigins/ThisOriginAndPartitions), interval_hours + on_idle_minutes thresholds, exempt_hosts allow-list, always_preserve per-surface keep-list, force_execution_contexts injection, grace_period_seconds warning window. should_fire(ClearTriggerInput) pure decision; effective_surfaces() filters preserve + injects forced contexts. Absorbs Clear-Site-Data HTTP header + Chrome/Firefox/Safari 'clear browsing data' UIs + Safari ITP auto-clear."),
     ]
 }
 
@@ -632,8 +636,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            90,
-            "90 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            92,
+            "92 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -756,7 +760,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        90"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        92"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

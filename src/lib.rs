@@ -25,6 +25,7 @@ pub mod blocker;
 pub mod boost;
 pub mod bridge;
 pub mod cast;
+pub mod clear_site_data;
 pub mod command;
 #[cfg(feature = "ts")]
 pub mod ast;
@@ -106,6 +107,7 @@ pub mod split;
 pub mod spoof;
 pub mod state;
 pub mod storage;
+pub mod storage_quota;
 pub mod store;
 pub mod subtitle;
 pub mod suggestion_ranker;

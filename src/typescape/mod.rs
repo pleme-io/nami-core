@@ -399,6 +399,14 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Per-origin JS execution + API restriction — mode (AllowAll/BlockAll/AllowList/BlockList), origin glob lists, 25-category API denylist (WebRtc/Geolocation/Canvas/WebGl/Sensors/FineTimers/ServiceWorker/Credentials/…), inline+eval toggles. Absorbs NoScript, JShelter, uMatrix, Brave JS-off-by-default."),
         mk("defbridge", "bridge::BridgeSpec",
            "Tor bridge + pluggable-transport endpoint — Direct/Obfs4/Meek/Snowflake/Webtunnel/Other, address, 40-hex fingerprint (validated, space-tolerant), transport-specific `extra` tail. to_torrc_line() emits the line Tor consumes; to_torrc_block() wraps every enabled bridge as `Bridge …` config. Absorbs Tor Browser bridge UI + tor-proxy ecosystem."),
+        mk("defshare-target", "share::ShareTargetSpec",
+           "Share-sheet destination — Clipboard/Storage/Redirect/HttpPost/Mcp/Email with `{url}` / `{title}` / `{text}` template substitution. rendered_url + rendered_body materialize at dispatch time. Absorbs iOS/Android share sheets, Chrome Web Share API, Firefox Send To, Edge Share."),
+        mk("defoffline", "offline::OfflineSpec",
+           "Save-for-later / offline cache profile — storage namespace, TTL, asset classes (Html/Css/Images/Fonts/Scripts/Media), size cap, auto-save tag list. OfflineEntry carries BLAKE3 content-hash. Absorbs Pocket, Instapaper, Raindrop, Safari Reading List, Firefox Read It Later."),
+        mk("defpull-to-refresh", "pull_refresh::PullRefreshSpec",
+           "Pull-to-refresh rule — host glob + threshold (clamped [40, 300] CSS px) + command name + animation duration. command_for() returns the invoked command when the rule is enabled. Absorbs mobile Chrome/Safari/Firefox PTR."),
+        mk("defdownload", "download::DownloadSpec",
+           "Download manager policy — target folder, quarantine MIME list (Tor-Browser-style), auto-open MIME globs, hash_verify (None/Blake3/Sha256/Sha512), concurrency, resume flag, size cap. blake3_content_hash() emits the 26-char base32 shape so downloads flow into sekiban attestation directly. Absorbs Chrome/Firefox/Safari DL panels + uGet/aria2/JDownloader."),
     ]
 }
 
@@ -540,8 +548,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            44,
-            "44 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            48,
+            "48 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -664,7 +672,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        44"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        48"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

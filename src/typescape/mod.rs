@@ -505,6 +505,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "DevTools network throttling — Preset (Unthrottled/Offline/Slow3G/Fast3G/Regular4G/Good4G/Wifi/Cable/Dsl/DialUp/Custom) with effective() expanding to spec-valid (download_kbps, upload_kbps, latency_ms) tuple matching Chrome DevTools presets verbatim. download_kbps + upload_kbps + latency_ms when Custom, packet_loss_pct + jitter_ms always honored, offline flag wins over preset, timeout_pct enables chaos-testing per-request timeouts, exempt_hosts allow-list bypasses throttling (metrics endpoints). admits(host) pure predicate; clamped_packet_loss + clamped_timeout bound inputs to [0,100]. Absorbs Chrome DevTools Network conditions + Firefox Developer Tools throttling + Safari Web Inspector network throttling."),
         mk("deftime-travel", "time_travel::TimeTravelSpec",
            "**Novel — mainstream browsers ship no declarative time-travel surface.** DOM-state capture with pure rewind — Trigger set (7 kinds: Interval/Navigate/ScrollEnd/DomMutation/FormChange/Explicit/BeforeUnload), CaptureField set (10 surfaces: Dom/Scroll/FormState/Url/Console/Identity/LocalStorage/SessionStorage/Viewport/FocusSelector), sample_ms cadence, ring-buffered TimeTravelStore with max_snapshots + max_bytes caps, chained BLAKE3-128 Merkle hashing (same tameshi convention as audit-trail) to prove the replay sequence wasn't reordered, min_delta_bytes filter drops near-identical samples, redact_secrets + exempt_hosts privacy rails. record / rewind(n) / verify() pure API — any tamper to payload or prev_hash produces a verify() Err. Default profile DISABLED (privacy-first)."),
+        mk("deflocale", "locale::LocaleSpec",
+           "Per-host locale override — primary language tag, accept_languages with auto-scaled q-values (entries with explicit q pass-through), IANA timezone, DateFormat (Locale/UsSlash/EuSlash/Iso/JaJp/Dotted), TimeFormat (Locale/H12/H24), FirstDay (Locale/Sunday/Monday/Saturday), Measurement (Passthrough/Metric/Imperial/Uk), ISO 4217 currency override, NumberingSystem (Latn/Arab/Arabext/Beng/Deva/Thai/Hanidec/Roman), expose_to_js toggle (off leaves navigator.language untouched while still overriding Accept-Language), exempt_hosts allow-list. render_accept_language() emits the canonical HTTP header; primary_tag() + js_languages() surface the JS side; q-value floor is 0.1 (never collapses). Absorbs Chrome/Firefox/Safari Accept-Language + navigator.language(s) + Intl.* defaults — none of which have per-host UI."),
     ]
 }
 
@@ -646,8 +648,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            97,
-            "97 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            98,
+            "98 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -770,7 +772,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        97"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        98"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

@@ -64,6 +64,7 @@ pub mod layout;
 pub mod lisp;
 pub mod llm;
 pub mod llm_completion;
+pub mod locale;
 pub mod media_session;
 pub mod multiplayer_cursor;
 pub mod navigation_intent;

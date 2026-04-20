@@ -425,6 +425,12 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "Conversational Q&A over page contents — provider, ContextStrategy (WholeDom/Reader/Selection/Rag/None), HistoryScope (PerTab/PerSpace/Global/Ephemeral), storage namespace, max_context_tokens, keep_last_turns cap, rag_enabled + rag_chunk_size, system_prompt. build_call stitches system + context + history + question. Absorbs Arc AI chat, Edge Copilot, Brave Leo, Firefox AI sidebar."),
         mk("defllm-completion", "llm_completion::LlmCompletionSpec",
            "LLM-backed inline completion — CompletionTrigger (UrlBar/FormInput/Contenteditable/CodeBuffer), min_chars, debounce_ms, max_suggestions, temperature, host_gated + blocked_hosts, custom system_prompt. Built-in default_url_bar + default_compose profiles. Absorbs Arc AI URL completion, Edge Copilot-in-compose, Gmail Smart Compose."),
+        mk("defmedia-session", "media_session::MediaSessionSpec",
+           "W3C Media Session API profile — transport actions (Play/Pause/Stop/Seek*/Prev/Next/SkipAd/PiP/Mic/Cam/HangUp), metadata-extraction CSS selectors (title/artist/album/artwork), seek increment, auto-activate toggle. Absorbs Chrome/Edge/Firefox Media Session, iOS lock-screen, macOS Now Playing, Android media notification."),
+        mk("defcast", "cast::CastSpec",
+           "Media casting profile — 5 protocols (Chromecast/AirPlay/Miracast/DLNA/WebPresentation), discovery transport (Mdns/Ssdp/MdnsAndSsdp/Manual), host allow-list, preferred + default receivers, session timeout, require_confirm flag. CastReceiver shape with capability list + supports_all() check. Absorbs Google Cast SDK, Apple AirPlay, Microsoft Miracast, DLNA/UPnP."),
+        mk("defsubtitle", "subtitle::SubtitleSpec",
+           "Caption/subtitle handling — formats (Vtt/Srt/Ssa/Dfxp/PlatformLive), language preferences in order (exact + prefix match), font-size % (clamped [50, 400]), position (Bottom/Top/Native), auto_translate + target + provider (ties into AI pack). pick_language + should_auto_translate honor the preference chain. Absorbs HTML5 <track>, Netflix/YouTube UI, platform live captions."),
     ]
 }
 
@@ -566,8 +572,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            57,
-            "57 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            60,
+            "60 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -690,7 +696,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        57"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        60"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

@@ -82,6 +82,7 @@ pub mod script_policy;
 pub mod secure_note;
 pub mod security_policy;
 pub mod selector;
+pub mod service_worker;
 pub mod session;
 pub mod shadow;
 pub mod share;

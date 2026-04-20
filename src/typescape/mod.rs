@@ -449,6 +449,8 @@ fn dsl_keywords() -> Vec<DslKeyword> {
            "CRDT sync-room profile — RoomTransport (Nats/Websocket/DirectP2p/Local), CrdtKind (YCrdt/Automerge/LwwElementSet/OpLog), Persistence (None/IndexedDb/LocalStorage/Daemon), topic_template with {origin}/{path}/{space}/{room} tokens, awareness toggle, isolation_token scope, max_peers cap, snapshot_interval_seconds, throttle_ms, end-to-end encryption. Absorbs Figma multiplayer, Linear live-edit, Notion realtime, tldraw/Excalidraw rooms."),
         mk("defmultiplayer-cursor", "multiplayer_cursor::MultiplayerCursorSpec",
            "Live cursor visualization — CursorStyle (Pointer/Caret/Crosshair/Dot/Hand/CustomSvg), palette color list (round-robin per session), name_tag, fade_after_seconds, click_echo ripple, follow_mode camera jump, CursorScope (PerTab/PerProfile/Global), crowd_threshold hide-at-N, smoothing coefficient clamped [0,1], respect_reduced_motion. Absorbs Figma cursor chat, Excalidraw live cursors, tldraw multiplayer pointers, Arc Easels."),
+        mk("defservice-worker", "service_worker::ServiceWorkerSpec",
+           "Service-worker lifecycle + fetch-interception DSL — LifecycleEvent set (Install/Activate/Fetch/Message/Push/Sync/PeriodicSync/NotificationClick), scope path prefix, runtime name (links to defjs-runtime capability set), skip_waiting + client_claim, WorkerRoute list with Workbox-style path globs + CacheStrategy (CacheFirst/NetworkFirst/StaleWhileRevalidate/NetworkOnly/CacheOnly) + timeout_seconds + max_age_seconds + max_entries + cache_name override, max_cache_mb total cap, offline_fallback page, periodic_sync_seconds wake cadence. Absorbs Chrome/Firefox/Safari Service Worker API + Workbox routing patterns."),
     ]
 }
 
@@ -590,8 +592,8 @@ mod tests {
         let ts = typescape();
         assert_eq!(
             ts.dsl_keywords.len(),
-            69,
-            "69 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
+            70,
+            "70 def* DSLs expected; if this fires, update both the DSL surface AND the typescape"
         );
     }
 
@@ -714,7 +716,7 @@ mod tests {
         let yaml = manifest_yaml();
         // 13 DSLs is a load-bearing count — adding a new one means
         // also updating the `dsls: N` line here, which catches drift.
-        assert!(yaml.contains("dsls:        69"), "yaml: {yaml}");
+        assert!(yaml.contains("dsls:        70"), "yaml: {yaml}");
         // 3 AST domains currently: html + jsx + svelte.
         assert!(yaml.contains("domains:     4"), "yaml: {yaml}");
         // 4 host APIs.

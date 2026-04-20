@@ -152,26 +152,7 @@ fn sort_value(v: serde_json::Value) -> serde_json::Value {
 #[must_use]
 pub fn canonical_hash(spec: &ExtensionSpec) -> String {
     let bytes = canonical_bytes(spec);
-    base32_16(&bytes[..16])
-}
-
-fn base32_16(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz234567";
-    let mut out = String::new();
-    let mut buf: u32 = 0;
-    let mut bits: u32 = 0;
-    for &b in bytes {
-        buf = (buf << 8) | u32::from(b);
-        bits += 8;
-        while bits >= 5 {
-            bits -= 5;
-            out.push(ALPHABET[((buf >> bits) & 0x1f) as usize] as char);
-        }
-    }
-    if bits > 0 {
-        out.push(ALPHABET[((buf << (5 - bits)) & 0x1f) as usize] as char);
-    }
-    out
+    super::base32_16(&bytes[..16])
 }
 
 /// Result of verifying a signed extension.

@@ -194,27 +194,8 @@ impl Annotation {
         snapshot.updated_at = 0;
         let bytes = serde_json::to_vec(&snapshot).unwrap_or_default();
         let h = blake3::hash(&bytes);
-        base32_16(&h.as_bytes()[..16])
+        crate::extension::base32_16(&h.as_bytes()[..16])
     }
-}
-
-fn base32_16(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz234567";
-    let mut out = String::new();
-    let mut buf: u32 = 0;
-    let mut bits: u32 = 0;
-    for &b in bytes {
-        buf = (buf << 8) | u32::from(b);
-        bits += 8;
-        while bits >= 5 {
-            bits -= 5;
-            out.push(ALPHABET[((buf >> bits) & 0x1f) as usize] as char);
-        }
-    }
-    if bits > 0 {
-        out.push(ALPHABET[((buf << (5 - bits)) & 0x1f) as usize] as char);
-    }
-    out
 }
 
 /// Registry of annotation profiles.

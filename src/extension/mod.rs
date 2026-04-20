@@ -279,7 +279,13 @@ impl ExtensionRegistry {
     }
 }
 
-fn base32_16(bytes: &[u8]) -> String {
+/// Lowercase base32 (RFC 4648 alphabet, no padding) over arbitrary
+/// bytes. Shared by snapshot/annotate/download/extension::signature
+/// to produce 26-char content-addressable IDs from 16-byte BLAKE3
+/// prefixes. Callers that want the uppercase convention
+/// (audit_trail, time_travel) keep their own local encoder — their
+/// on-the-wire form is distinct.
+pub(crate) fn base32_16(bytes: &[u8]) -> String {
     const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz234567";
     let mut out = String::new();
     let mut buf: u32 = 0;

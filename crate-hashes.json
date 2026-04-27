@@ -1,4 +1,11 @@
 {
   "git+https://github.com/pleme-io/shikumi#0.1.0": "0ad63lf5jp2n8kd3dqgkc6plndbckaxrgmhqdmpkdh9n51kjjjxh",
-  "git+https://github.com/pleme-io/todoku#0.1.0": "05wmay65irxsap4cc23cf3h562lz7v2sdgyjyhhhqzy0n4h5cpdn"
+  "git+https://github.com/pleme-io/todoku#0.1.0": "05wmay65irxsap4cc23cf3h562lz7v2sdgyjyhhhqzy0n4h5cpdn",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-core@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-eval@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-lattice@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-lisp-derive@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-lisp@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-nix@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4",
+  "git+ssh://git@github.com/pleme-io/tatara?rev=a1062f8069bb336a87cb9b2c68a85885665e3234#tatara-process@0.2.0": "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4"
 }

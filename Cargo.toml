@@ -33,7 +33,7 @@ signatures = ["dep:ed25519-dalek", "dep:base64"]
 [dependencies]
 html5ever = "0.29"
 markup5ever = "0.14"
-lightningcss = { version = "1.0.0-alpha", features = ["visitor"] }
+lightningcss = { version = "1.0.0-alpha", default-features = false, features = ["visitor"] }
 taffy = "0.7"
 todoku = { git = "https://github.com/pleme-io/todoku", optional = true }
 shikumi = { git = "https://github.com/pleme-io/shikumi", optional = true }

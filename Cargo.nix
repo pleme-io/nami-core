@@ -12874,7 +12874,7 @@ rec {
         src = pkgs.fetchgit {
           url = "https://github.com/pleme-io/shikumi";
           rev = "e973f7bbc85aa558d3406d265a48a010bdcf2a5c";
-          sha256 = "0ad63lf5jp2n8kd3dqgkc6plndbckaxrgmhqdmpkdh9n51kjjjxh";
+          sha256 = "1az646clc3r48jvrxnmr11r0fm70swn08k9li3rd9xysnragxm5f";
         };
         dependencies = [
           {
@@ -14340,7 +14340,7 @@ rec {
         src = pkgs.fetchgit {
           url = "https://github.com/pleme-io/todoku";
           rev = "4e29d92c5446568dd04c80d0ed16f759931fb4f8";
-          sha256 = "05wmay65irxsap4cc23cf3h562lz7v2sdgyjyhhhqzy0n4h5cpdn";
+          sha256 = "0li38d2vprkp8ymy1g0mc1v5kb3xc9466f0d2ddsp0v8d359amva";
         };
         dependencies = [
           {

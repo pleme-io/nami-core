@@ -37,8 +37,8 @@ lightningcss = { version = "1.0.0-alpha", default-features = false, features = [
 taffy = "0.7"
 todoku = { git = "https://github.com/pleme-io/todoku", optional = true }
 shikumi = { git = "https://github.com/pleme-io/shikumi", optional = true }
-tatara-lisp = { git = "ssh://git@github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
-tatara-eval = { git = "ssh://git@github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
+tatara-lisp = { git = "https://github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
+tatara-eval = { git = "https://github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
 url = { version = "2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

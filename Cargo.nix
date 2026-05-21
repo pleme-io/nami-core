@@ -1614,9 +1614,9 @@ rec {
       };
       "cc" = rec {
         crateName = "cc";
-        version = "1.2.57";
+        version = "1.2.56";
         edition = "2018";
-        sha256 = "08q464b62d03zm7rgiixavkrh5lzfq18lwf884vgycj9735d23bs";
+        sha256 = "1chvh9g2izhqad7vzy4cc7xpdljdvqpsr6x6hv1hmyqv3mlkbgxf";
         authors = [
           "Alex Crichton <alex@alexcrichton.com>"
         ];
@@ -3679,9 +3679,9 @@ rec {
       };
       "ed25519-dalek" = rec {
         crateName = "ed25519-dalek";
-        version = "2.2.0";
+        version = "2.1.1";
         edition = "2021";
-        sha256 = "1agcwij1z687hg26ngzwhnmpz29b2w56m8z1ap3pvrnfh709drvh";
+        sha256 = "0w88cafwglg9hjizldbmlza0ns3hls81zk1bcih3m5m3h67algaa";
         libName = "ed25519_dalek";
         authors = [
           "isis lovecruft <isis@patternsinthevoid.net>"
@@ -7595,10 +7595,10 @@ rec {
       };
       "leb128" = rec {
         crateName = "leb128";
-        version = "0.2.6";
+        version = "0.2.5";
         edition = "2018";
         crateBin = [];
-        sha256 = "0ic5j7h1wir8xp45m64r8cvl6r1vhfxvlwpjsvp9707ghyn6pi3c";
+        sha256 = "0rxxjdn76sjbrb08s4bi7m4x47zg68f71jzgx8ww7j0cnivjckl8";
         authors = [
           "Nick Fitzgerald <fitzgen@gmail.com>"
           "Philip Craig <philipjcraig@gmail.com>"
@@ -8626,9 +8626,9 @@ rec {
       };
       "once_cell" = rec {
         crateName = "once_cell";
-        version = "1.21.4";
+        version = "1.21.3";
         edition = "2021";
-        sha256 = "0l1v676wf71kjg2khch4dphwh1jp3291ffiymr2mvy1kxd5kwz4z";
+        sha256 = "0b9x77lb9f1j6nqgf5aka4s2qj0nly176bpbrv6f9iakk5ff3xa2";
         authors = [
           "Aleksey Kladov <aleksey.kladov@gmail.com>"
         ];
@@ -8664,9 +8664,9 @@ rec {
       };
       "openraft" = rec {
         crateName = "openraft";
-        version = "0.9.24";
+        version = "0.9.22";
         edition = "2021";
-        sha256 = "02jadw87cgna49d3afxllk16sz01j5h9c85077ybryfdc0pmxlw0";
+        sha256 = "1csa8j1451ghfs2a5yglb5x9z4smy2zja4srff3flj9iwaq40byc";
         authors = [
           "Databend Authors <opensource@datafuselabs.com>"
           "Anthony Dodd <Dodd.AnthonyJosiah@gmail.com>"
@@ -8751,9 +8751,9 @@ rec {
       };
       "openraft-macros" = rec {
         crateName = "openraft-macros";
-        version = "0.9.24";
+        version = "0.9.22";
         edition = "2021";
-        sha256 = "0l8jjc2r4h29njnal4llcrk0j448yyl3q7cfkhhdma27sx107gxv";
+        sha256 = "0751mmy3g77mgz9bnh49cpnq9ngsff4z78cyp4swasyra8q07c4m";
         procMacro = true;
         libName = "openraft_macros";
         authors = [
@@ -8788,9 +8788,9 @@ rec {
       };
       "openssl" = rec {
         crateName = "openssl";
-        version = "0.10.76";
+        version = "0.10.75";
         edition = "2021";
-        sha256 = "1kwfn77qi342fr3hn1kxza6hslyma4ylszlcbg3a4vp1fln0074m";
+        sha256 = "0a238gvrzjq0r62a7472i685hi5jjzgfj72kp1xd32ir46qqv0q8";
         authors = [
           "Steven Fackler <sfackler@gmail.com>"
         ];
@@ -8882,10 +8882,10 @@ rec {
       };
       "openssl-sys" = rec {
         crateName = "openssl-sys";
-        version = "0.9.112";
+        version = "0.9.111";
         edition = "2021";
         links = "openssl";
-        sha256 = "1nyvn3nvkcknjpkh8c19zjb9q3mbcyxgsvajw4mm09p2ngrmmmap";
+        sha256 = "08f3mpsabivfi3fd0qv9231qidqy68lr8a4qi32y6xda43av5jl2";
         build = "build/main.rs";
         libName = "openssl_sys";
         authors = [
@@ -12135,9 +12135,9 @@ rec {
       };
       "schannel" = rec {
         crateName = "schannel";
-        version = "0.1.29";
+        version = "0.1.28";
         edition = "2018";
-        sha256 = "0ffrzz5vf2s3gnzvphgb5gg8fqifvryl07qcf7q3x1scj3jbghci";
+        sha256 = "1qb6s5gyxfz2inz753a4z3mc1d266mwvz0c5w7ppd3h44swq27c9";
         authors = [
           "Steven Fackler <sfackler@gmail.com>"
           "Steffen Butzer <steffen.butzer@outlook.com>"
@@ -12873,7 +12873,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/pleme-io/shikumi";
-          rev = "e973f7bbc85aa558d3406d265a48a010bdcf2a5c";
+          rev = "9eaa3aa99da9afadfb9ad635353b12db9ffb8b4a";
           sha256 = "1az646clc3r48jvrxnmr11r0fm70swn08k9li3rd9xysnragxm5f";
         };
         dependencies = [
@@ -13583,7 +13583,7 @@ rec {
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13661,7 +13661,7 @@ rec {
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13705,7 +13705,7 @@ rec {
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13741,7 +13741,7 @@ rec {
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13783,7 +13783,7 @@ rec {
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13815,7 +13815,7 @@ rec {
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13871,7 +13871,7 @@ rec {
         crateBin = [];
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "ssh://git@github.com/pleme-io/tatara";
+          url = "https://github.com/pleme-io/tatara";
           rev = "a1062f8069bb336a87cb9b2c68a85885665e3234";
           sha256 = "0rad43lqlqa3sadrfwf0y7vs72a1b4c1zz0pi670cmmq6s1g9fz4";
         };
@@ -13950,9 +13950,9 @@ rec {
       };
       "tempfile" = rec {
         crateName = "tempfile";
-        version = "3.27.0";
+        version = "3.26.0";
         edition = "2021";
-        sha256 = "1gblhnyfjsbg9wjg194n89wrzah7jy3yzgnyzhp56f3v9jd7wj9j";
+        sha256 = "182lfcv9d5w9349i0rjlgn4431k2m3yqfn9ls84p9d3ifxv2r9w2";
         authors = [
           "Steven Allen <steven@stebalien.com>"
           "The Rust Project Developers"
@@ -14294,9 +14294,9 @@ rec {
       };
       "tinyvec" = rec {
         crateName = "tinyvec";
-        version = "1.11.0";
+        version = "1.10.0";
         edition = "2018";
-        sha256 = "1wvycrghzmaysnw34kzwnf0mfx6r75045s24r214wnnjadqfcq9y";
+        sha256 = "1yhk0qdqyiaa4v2j9h8pzax5gxgwpz4da0lcphfil6g6pk1zv9dz";
         authors = [
           "Lokathor <zefria@gmail.com>"
         ];
@@ -14311,12 +14311,11 @@ rec {
           "alloc" = [ "tinyvec_macros" ];
           "arbitrary" = [ "dep:arbitrary" ];
           "borsh" = [ "dep:borsh" ];
-          "defmt" = [ "dep:defmt" ];
           "generic-array" = [ "dep:generic-array" ];
           "latest_stable_rust" = [ "rustc_1_61" ];
           "real_blackbox" = [ "criterion/real_blackbox" ];
           "rustc_1_61" = [ "rustc_1_57" ];
-          "serde" = [ "dep:serde_core" ];
+          "serde" = [ "dep:serde" ];
           "std" = [ "alloc" ];
           "tinyvec_macros" = [ "dep:tinyvec_macros" ];
         };
@@ -14339,7 +14338,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/pleme-io/todoku";
-          rev = "4e29d92c5446568dd04c80d0ed16f759931fb4f8";
+          rev = "92af7a0ba53c35738a511293e3e046396afe962d";
           sha256 = "0li38d2vprkp8ymy1g0mc1v5kb3xc9466f0d2ddsp0v8d359amva";
         };
         dependencies = [
@@ -14805,7 +14804,7 @@ rec {
           }
           {
             name = "winnow";
-            packageId = "winnow 1.0.2";
+            packageId = "winnow 1.0.1";
             optional = true;
           }
         ];
@@ -14826,7 +14825,7 @@ rec {
         dependencies = [
           {
             name = "winnow";
-            packageId = "winnow 1.0.2";
+            packageId = "winnow 1.0.1";
             usesDefaultFeatures = false;
           }
         ];
@@ -19640,11 +19639,11 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" "default" "std" ];
       };
-      "winnow 1.0.2" = rec {
+      "winnow 1.0.1" = rec {
         crateName = "winnow";
-        version = "1.0.2";
+        version = "1.0.1";
         edition = "2021";
-        sha256 = "1l7xnfvlgy4da6gq5ip2bgcm8i9d0rwzaxg1p88nlw8lxy5p1q9f";
+        sha256 = "1dbji1bwviy08pl74f2qw2m4w9hc4p3vyl3lfj05jdydy59w1nh9";
         dependencies = [
           {
             name = "memchr";

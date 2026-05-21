@@ -8193,6 +8193,13 @@ rec {
             packageId = "blake3";
           }
           {
+            name = "curve25519-dalek";
+            packageId = "curve25519-dalek";
+            optional = true;
+            usesDefaultFeatures = false;
+            features = [ "zeroize" ];
+          }
+          {
             name = "ed25519-dalek";
             packageId = "ed25519-dalek";
             optional = true;
@@ -8339,7 +8346,7 @@ rec {
           "eval" = [ "lisp" "dep:tatara-eval" ];
           "lisp" = [ "dep:tatara-lisp" ];
           "network" = [ "dep:todoku" ];
-          "signatures" = [ "dep:ed25519-dalek" "dep:base64" ];
+          "signatures" = [ "dep:ed25519-dalek" "dep:base64" "dep:curve25519-dalek" ];
           "ts" = [ "dep:tree-sitter" "dep:tree-sitter-typescript" "dep:tree-sitter-svelte-next" ];
           "wasm" = [ "dep:wasmtime" "dep:wasmtime-wasi" "dep:wasi-common" ];
         };

@@ -28,7 +28,7 @@ wasm = ["dep:wasmtime", "dep:wasmtime-wasi", "dep:wasi-common"]
 # Ed25519 signatures for (defextension) bundles — connects the
 # browser-extension store to pleme-io's sekiban/tameshi attestation
 # chain. Off by default because most runtime paths don't need it.
-signatures = ["dep:ed25519-dalek", "dep:base64"]
+signatures = ["dep:ed25519-dalek", "dep:base64", "dep:curve25519-dalek"]
 
 [dependencies]
 html5ever = "0.29"
@@ -59,6 +59,15 @@ wasmtime-wasi = { version = "38", optional = true }
 wasi-common = { version = "38", optional = true }
 # Ed25519 signing — battle-tested, audited, no_std-compatible.
 ed25519-dalek = { version = "2", optional = true, default-features = false, features = ["std", "rand_core"] }
+# Pulled in transitively by ed25519-dalek. Explicit pin with the
+# zeroize feature is REQUIRED so feature unification gives Scalar
+# the DefaultIsZeroes impl that ed25519-dalek::hazmat needs —
+# otherwise nix builds (where some transitive forces zeroize on
+# ed25519-dalek via default-features) fail with E0599 "the method
+# zeroize exists for struct Scalar, but its trait bounds were not
+# satisfied". Pinned to 4.1.3 (latest compatible with our Rust
+# 1.89.0 / crates.io graph).
+curve25519-dalek = { version = "4.1.3", optional = true, default-features = false, features = ["zeroize"] }
 # Base64 encoding for pubkeys + signatures in manifest form.
 base64 = { version = "0.22", optional = true }
 # RFC 6238 TOTP — HMAC-SHA1/256/512 on a shared secret.

@@ -1173,7 +1173,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1314,7 +1314,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1552,7 +1552,7 @@ dependencies = [
 [[package]]
 name = "gen-macros"
 version = "0.1.8"
-source = "git+https://github.com/pleme-io/gen#97aaf2e4ce3cfbc50d0f7377d227bda42dd4d2c6"
+source = "git+https://github.com/pleme-io/gen#8ecee494c1d478d3d34532919ccea322075d7890"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1562,7 +1562,7 @@ dependencies = [
 [[package]]
 name = "gen-platform"
 version = "0.1.8"
-source = "git+https://github.com/pleme-io/gen#97aaf2e4ce3cfbc50d0f7377d227bda42dd4d2c6"
+source = "git+https://github.com/pleme-io/gen#8ecee494c1d478d3d34532919ccea322075d7890"
 dependencies = [
  "gen-macros",
  "gen-types",
@@ -1575,7 +1575,7 @@ dependencies = [
 [[package]]
 name = "gen-types"
 version = "0.1.8"
-source = "git+https://github.com/pleme-io/gen#97aaf2e4ce3cfbc50d0f7377d227bda42dd4d2c6"
+source = "git+https://github.com/pleme-io/gen#8ecee494c1d478d3d34532919ccea322075d7890"
 dependencies = [
  "blake3",
  "chrono",
@@ -2610,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "nami-core"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64",
  "blake3",
@@ -3292,7 +3292,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3646,7 +3646,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3998,8 +3998,8 @@ dependencies = [
 
 [[package]]
 name = "shikumi"
-version = "0.1.0"
-source = "git+https://github.com/pleme-io/shikumi#70b2f94fbc8f5e40e409b75d91af6d840ab0a02c"
+version = "0.1.1"
+source = "git+https://github.com/pleme-io/shikumi#693041f48e9f141e75553a7da692b6676833e0a9"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4368,7 +4368,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4500,7 +4500,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "todoku"
 version = "0.1.0"
-source = "git+https://github.com/pleme-io/todoku#a4cf19b6fc00f176fc44ba8087147360147f5d89"
+source = "git+https://github.com/pleme-io/todoku#70fb934c5d8d8be1cb9d33b392ccf8e2cf60ab07"
 dependencies = [
  "async-trait",
  "reqwest",
@@ -5518,7 +5518,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "cargo_lock_sha256": "57612e54edbdb21bccfe9540f7df6590ed29d86671a23318aeb1629350cd47c3",
+  "cargo_lock_sha256": "0c676144b417d3a367b2574ba26484b6805af73fd24725e16e652aa141550d8e",
   "target_resolves": {
     "base": {
       "ahash-0.8.12": {
@@ -2261,7 +2261,7 @@
           "std"
         ]
       },
-      "nami-core-0.1.2": {
+      "nami-core-0.1.3": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -6377,6 +6377,9 @@
     "cpufeatures-0.2.17": {
       "edition": "2018"
     },
+    "cpufeatures-0.3.0": {
+      "edition": "2024"
+    },
     "criterion-0.7.0": {
       "edition": "2021"
     },
@@ -6552,6 +6555,9 @@
       "edition": "2021",
       "proc_macro": true
     },
+    "linux-raw-sys-0.12.1": {
+      "edition": "2021"
+    },
     "litemap-0.8.2": {
       "edition": "2021"
     },
@@ -6579,7 +6585,7 @@
     "memchr-2.8.1": {
       "edition": "2021"
     },
-    "nami-core-0.1.2": {
+    "nami-core-0.1.3": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",
@@ -6942,12 +6948,6 @@
     "zmij-1.0.21": {
       "edition": "2021",
       "build_script": "build.rs"
-    },
-    "cpufeatures-0.3.0": {
-      "edition": "2024"
-    },
-    "linux-raw-sys-0.12.1": {
-      "edition": "2021"
     }
   },
   "git_nar_sha256": {

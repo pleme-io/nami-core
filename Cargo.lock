@@ -1173,7 +1173,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1314,7 +1314,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1551,8 +1551,8 @@ dependencies = [
 
 [[package]]
 name = "gen-macros"
-version = "0.1.6"
-source = "git+https://github.com/pleme-io/gen#d61bbdcfc76e856bbed46e90ddc6872c0031db96"
+version = "0.1.8"
+source = "git+https://github.com/pleme-io/gen#97aaf2e4ce3cfbc50d0f7377d227bda42dd4d2c6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1561,8 +1561,8 @@ dependencies = [
 
 [[package]]
 name = "gen-platform"
-version = "0.1.6"
-source = "git+https://github.com/pleme-io/gen#d61bbdcfc76e856bbed46e90ddc6872c0031db96"
+version = "0.1.8"
+source = "git+https://github.com/pleme-io/gen#97aaf2e4ce3cfbc50d0f7377d227bda42dd4d2c6"
 dependencies = [
  "gen-macros",
  "gen-types",
@@ -1574,8 +1574,8 @@ dependencies = [
 
 [[package]]
 name = "gen-types"
-version = "0.1.6"
-source = "git+https://github.com/pleme-io/gen#d61bbdcfc76e856bbed46e90ddc6872c0031db96"
+version = "0.1.8"
+source = "git+https://github.com/pleme-io/gen#97aaf2e4ce3cfbc50d0f7377d227bda42dd4d2c6"
 dependencies = [
  "blake3",
  "chrono",
@@ -3292,7 +3292,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3646,7 +3646,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3999,7 +3999,7 @@ dependencies = [
 [[package]]
 name = "shikumi"
 version = "0.1.0"
-source = "git+https://github.com/pleme-io/shikumi#4426f572b66d053dde2ca211c3b55121d76598b1"
+source = "git+https://github.com/pleme-io/shikumi#70b2f94fbc8f5e40e409b75d91af6d840ab0a02c"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4368,7 +4368,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5518,7 +5518,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

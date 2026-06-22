@@ -264,6 +264,277 @@ impl FingerprintRandomizeRegistry {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Seeded value generation — the absorbed Brave/Tor "farbling" technique
+// ═══════════════════════════════════════════════════════════════════
+//
+// Obscura (and Brave Shields) generate fingerprint values that are
+// DETERMINISTIC from a single per-session seed: stable within a session
+// (so canvas rendering and repeated reads agree), but different across
+// sessions and across users. Random-per-request is itself a detection
+// tell — a real machine reports the same hardwareConcurrency on every
+// call — so every value here is a pure function of `(seed, spec)`.
+//
+// The INJECTION of these values into page JS awaits the Servo JS engine
+// host bindings (see `crate::js_runtime` / `crate::spoof`); this module
+// owns the absorbed *technique* — value GENERATION — which is real and
+// tested here.
+
+/// `SplitMix64` — a tiny, fast, well-distributed deterministic PRNG.
+/// Pure-Rust, zero deps (`rand` stays dev-only). Same seed → same
+/// stream; used to derive every spoofed value from one session seed.
+#[derive(Debug, Clone, Copy)]
+pub struct SplitMix64 {
+    state: u64,
+}
+
+impl SplitMix64 {
+    /// Seed the generator. Any `u64` is a valid seed.
+    #[must_use]
+    pub fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    /// Next pseudo-random `u64` in the stream.
+    pub fn next_u64(&mut self) -> u64 {
+        // Reference SplitMix64 (Steele, Lea & Flood 2014).
+        self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+
+    /// Uniform-ish value in `[0, n)`. `n == 0` returns `0`.
+    pub fn below(&mut self, n: u64) -> u64 {
+        if n == 0 {
+            0
+        } else {
+            self.next_u64() % n
+        }
+    }
+
+    /// Pick a reference into `items` deterministically. Panics never —
+    /// callers pass non-empty static pools.
+    pub fn pick<'a, T>(&mut self, items: &'a [T]) -> &'a T {
+        debug_assert!(!items.is_empty(), "pick from empty pool");
+        let idx = self.below(items.len() as u64) as usize;
+        &items[idx]
+    }
+}
+
+/// Realistic WebGL `(UNMASKED_VENDOR, UNMASKED_RENDERER)` pairs drawn
+/// from common desktop GPU stacks. A spoofed renderer must look like a
+/// plausible real machine, so vendor + renderer are picked as a *pair*
+/// (an Apple vendor with an NVIDIA renderer would itself be a tell).
+const WEBGL_POOL: &[(&str, &str)] = &[
+    ("Google Inc. (Intel)", "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)"),
+    ("Google Inc. (Intel)", "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)"),
+    ("Google Inc. (NVIDIA)", "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)"),
+    ("Google Inc. (NVIDIA)", "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Direct3D11 vs_5_0 ps_5_0, D3D11)"),
+    ("Google Inc. (AMD)", "ANGLE (AMD, AMD Radeon RX 6700 XT Direct3D11 vs_5_0 ps_5_0, D3D11)"),
+    ("Google Inc. (AMD)", "ANGLE (AMD, AMD Radeon(TM) Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)"),
+    ("Apple", "Apple M1"),
+    ("Apple", "Apple M2"),
+    ("Apple", "Apple M3"),
+    ("Intel Inc.", "Intel(R) Iris(TM) Plus Graphics 640"),
+    ("Mozilla", "Mesa Intel(R) UHD Graphics (CML GT2)"),
+    ("Mesa/X.org", "AMD Radeon Graphics (radeonsi, navi23, LLVM 15.0.7, DRM 3.49)"),
+];
+
+/// Common desktop screen geometries `(width, height)`. Real screens
+/// cluster at a handful of resolutions; spoofing to an oddball size is
+/// a tell, so the pool is the documented popular set.
+const SCREEN_POOL: &[(u32, u32)] = &[
+    (1920, 1080),
+    (1366, 768),
+    (1536, 864),
+    (1440, 900),
+    (1280, 720),
+    (2560, 1440),
+    (1680, 1050),
+    (1600, 900),
+    (3840, 2160),
+];
+
+/// Plausible `navigator.hardwareConcurrency` values (logical cores).
+/// Obscura leaves this FIXED — randomizing it (within a realistic set)
+/// is the improvement absorbed here.
+const CONCURRENCY_POOL: &[u32] = &[4, 6, 8, 12, 16];
+
+/// Plausible `navigator.deviceMemory` (GiB) values. The Device Memory
+/// API only ever reports a power-of-two-ish bucket: 0.25/0.5/1/2/4/8.
+/// Real desktops report 8 (the spec caps the reported value at 8), so
+/// we pick from the upper buckets. Obscura leaves this fixed too.
+const DEVICE_MEMORY_POOL: &[u8] = &[4, 8];
+
+/// Recent stable Chrome major versions for the
+/// `navigator.userAgentData` brand list. Kept to a small recent window
+/// so the spoofed UA looks current, not archaic.
+const CHROME_MAJORS: &[u16] = &[122, 123, 124, 125, 126];
+
+/// A fully-generated set of spoofed fingerprint values for one session.
+/// Every field is deterministic from the `(seed, spec)` pair passed to
+/// [`generate`]. Surfaces left in `Allow` mode by the spec are reported
+/// as realistic *default* values (no farbling), matching the policy.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpoofedFingerprint {
+    /// Per-pixel canvas noise seed. The JS host hook adds a tiny,
+    /// deterministic per-pixel delta derived from this seed so
+    /// `getImageData` differs imperceptibly across sessions.
+    pub canvas_noise: u64,
+    /// Audio-context noise seed — same idea for the audio fingerprint
+    /// (sums of `AnalyserNode` frequency data).
+    pub audio_noise: u64,
+    /// Spoofed `WEBGL_debug_renderer_info` `UNMASKED_VENDOR_WEBGL`.
+    pub webgl_vendor: String,
+    /// Spoofed `WEBGL_debug_renderer_info` `UNMASKED_RENDERER_WEBGL`.
+    pub webgl_renderer: String,
+    /// Spoofed screen geometry.
+    pub screen: Screen,
+    /// Spoofed `navigator.hardwareConcurrency` (logical cores).
+    pub hardware_concurrency: u32,
+    /// Spoofed `navigator.deviceMemory` in GiB.
+    pub device_memory_gb: u8,
+    /// Spoofed `navigator.userAgentData` brand info (Chrome sim).
+    pub user_agent_data: UserAgentData,
+}
+
+/// Screen geometry. `avail_*` is slightly less than the full size to
+/// mimic OS chrome (taskbar / menu bar).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Screen {
+    pub width: u32,
+    pub height: u32,
+    pub avail_width: u32,
+    pub avail_height: u32,
+    pub color_depth: u8,
+}
+
+/// Simulated `navigator.userAgentData` — the Chromium high-entropy
+/// brand surface. We report a current Chrome major version.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserAgentData {
+    /// Chrome major version (e.g. `124`).
+    pub chrome_major: u16,
+    /// `platform` brand (e.g. `"Windows"`, `"macOS"`, `"Linux"`).
+    pub platform: String,
+    /// `mobile` flag — always `false` for the desktop pools above.
+    pub mobile: bool,
+}
+
+/// Map a WebGL vendor/renderer pair to a plausible `userAgentData`
+/// platform string, so the brand + GPU stay internally consistent.
+fn platform_for_webgl(vendor: &str) -> &'static str {
+    if vendor.starts_with("Apple") {
+        "macOS"
+    } else if vendor.starts_with("Mesa") || vendor.contains("X.org") {
+        "Linux"
+    } else {
+        "Windows"
+    }
+}
+
+/// Generate the full spoofed-fingerprint value set deterministically
+/// from one session `seed` and the active `spec`.
+///
+/// - **Same seed → same values** (stable within a session).
+/// - **Different seed → (almost certainly) different values** (varies
+///   across sessions / users).
+/// - Each surface honors its spec mode: `Noise`/`Generic`/`Block`/
+///   `Prompt` produce a spoofed value, `Allow` reports a realistic
+///   default. The canvas/audio noise seeds are scaled by
+///   [`FingerprintRandomizeSpec::clamped_intensity`].
+///
+/// The values are produced from independent sub-streams (each field
+/// draws from its own freshly-seeded `SplitMix64`) so toggling one
+/// surface's mode does not shift another surface's value.
+#[must_use]
+pub fn generate(seed: u64, spec: &FingerprintRandomizeSpec) -> SpoofedFingerprint {
+    // Derive a distinct sub-seed per surface from the session seed, so
+    // each field's stream is independent + stable.
+    let sub = |salt: u64| SplitMix64::new(seed ^ salt.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+
+    // Canvas / audio noise seeds — present only when noised. Scale the
+    // raw seed range by intensity so higher intensity = more entropy.
+    let intensity = spec.clamped_intensity();
+    let canvas_noise = if produces_value(spec.canvas) {
+        scaled_noise(sub(1).next_u64(), intensity)
+    } else {
+        0
+    };
+    let audio_noise = if produces_value(spec.audio) {
+        scaled_noise(sub(2).next_u64(), intensity)
+    } else {
+        0
+    };
+
+    // WebGL vendor/renderer pair (one pick keeps them consistent).
+    let mut webgl_rng = sub(3);
+    let (webgl_vendor, webgl_renderer) = *webgl_rng.pick(WEBGL_POOL);
+    let platform = platform_for_webgl(webgl_vendor);
+
+    // Screen geometry.
+    let mut screen_rng = sub(4);
+    let (w, h) = *screen_rng.pick(SCREEN_POOL);
+    // availHeight trimmed by an OS-chrome band (24/32/40 px).
+    let chrome_band = [24u32, 32, 40][screen_rng.below(3) as usize];
+    let screen = Screen {
+        width: w,
+        height: h,
+        avail_width: w,
+        avail_height: h.saturating_sub(chrome_band),
+        color_depth: 24,
+    };
+
+    // hardwareConcurrency + deviceMemory — RANDOMIZED (Obscura fixes
+    // these; we improve on it by drawing from realistic pools).
+    let hardware_concurrency = *sub(5).pick(CONCURRENCY_POOL);
+    let device_memory_gb = *sub(6).pick(DEVICE_MEMORY_POOL);
+
+    // userAgentData — current Chrome major, platform-consistent.
+    let chrome_major = *sub(7).pick(CHROME_MAJORS);
+    let user_agent_data = UserAgentData {
+        chrome_major,
+        platform: platform.to_owned(),
+        mobile: false,
+    };
+
+    SpoofedFingerprint {
+        canvas_noise,
+        audio_noise,
+        webgl_vendor: webgl_vendor.to_owned(),
+        webgl_renderer: webgl_renderer.to_owned(),
+        screen,
+        hardware_concurrency,
+        device_memory_gb,
+        user_agent_data,
+    }
+}
+
+/// A surface produces a spoofed value for any mode other than `Allow`.
+fn produces_value(mode: FingerprintMode) -> bool {
+    mode != FingerprintMode::Allow
+}
+
+/// Squeeze a raw 64-bit seed into a non-zero noise seed whose magnitude
+/// grows with intensity. At intensity 0 a noised surface still gets a
+/// minimal non-zero seed (so it is distinguishable from `Allow`'s 0).
+fn scaled_noise(raw: u64, intensity: f32) -> u64 {
+    // Map intensity [0,1] → a bit-width budget [8, 64]; mask the raw
+    // seed to that many low bits, then OR in 1 to guarantee non-zero.
+    let bits = 8 + (intensity.clamp(0.0, 1.0) * 56.0) as u32; // 8..=64
+    let mask = if bits >= 64 {
+        u64::MAX
+    } else {
+        (1u64 << bits) - 1
+    };
+    (raw & mask) | 1
+}
+
 #[cfg(feature = "lisp")]
 pub fn compile(src: &str) -> Result<Vec<FingerprintRandomizeSpec>, String> {
     tatara_lisp::compile_typed::<FingerprintRandomizeSpec>(src)
@@ -414,6 +685,154 @@ mod tests {
             ..FingerprintRandomizeSpec::default_profile()
         });
         assert!(reg.resolve("example.com").is_none());
+    }
+
+    // ── Seeded value generation ───────────────────────────────────
+
+    #[test]
+    fn splitmix64_is_deterministic() {
+        let mut a = SplitMix64::new(42);
+        let mut b = SplitMix64::new(42);
+        for _ in 0..16 {
+            assert_eq!(a.next_u64(), b.next_u64());
+        }
+        // Different seed → different stream (overwhelmingly likely).
+        let mut c = SplitMix64::new(43);
+        assert_ne!(SplitMix64::new(42).next_u64(), c.next_u64());
+    }
+
+    #[test]
+    fn splitmix64_below_respects_bound() {
+        let mut rng = SplitMix64::new(7);
+        for _ in 0..1000 {
+            assert!(rng.below(10) < 10);
+        }
+        assert_eq!(SplitMix64::new(1).below(0), 0);
+    }
+
+    #[test]
+    fn same_seed_same_values() {
+        let spec = FingerprintRandomizeSpec::default_profile();
+        let a = generate(0xDEAD_BEEF, &spec);
+        let b = generate(0xDEAD_BEEF, &spec);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn different_seed_different_values() {
+        let spec = FingerprintRandomizeSpec::default_profile();
+        // Across a spread of seeds the generated fingerprints differ —
+        // collisions across the whole struct are vanishingly unlikely.
+        let mut seen = std::collections::HashSet::new();
+        for seed in 0..64u64 {
+            let fp = generate(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xABCD, &spec);
+            seen.insert(serde_json::to_string(&fp).unwrap());
+        }
+        // At least the large majority are distinct (pools are finite, so
+        // a few collisions on individual fields are fine — the full
+        // struct should still vary widely).
+        assert!(seen.len() >= 50, "expected wide variation, got {}", seen.len());
+    }
+
+    #[test]
+    fn generated_values_in_realistic_ranges() {
+        let spec = FingerprintRandomizeSpec::default_profile();
+        for seed in 0..256u64 {
+            let fp = generate(seed, &spec);
+            assert!(WEBGL_POOL
+                .iter()
+                .any(|(v, r)| *v == fp.webgl_vendor && *r == fp.webgl_renderer));
+            assert!(SCREEN_POOL.contains(&(fp.screen.width, fp.screen.height)));
+            assert!(fp.screen.avail_width <= fp.screen.width);
+            assert!(fp.screen.avail_height < fp.screen.height);
+            assert_eq!(fp.screen.color_depth, 24);
+            assert!(CONCURRENCY_POOL.contains(&fp.hardware_concurrency));
+            assert!(DEVICE_MEMORY_POOL.contains(&fp.device_memory_gb));
+            assert!(CHROME_MAJORS.contains(&fp.user_agent_data.chrome_major));
+            assert!(!fp.user_agent_data.mobile);
+        }
+    }
+
+    #[test]
+    fn hardware_concurrency_and_device_memory_are_randomized() {
+        // The headline improvement over Obscura: these surfaces VARY
+        // across sessions instead of being pinned to one constant.
+        let spec = FingerprintRandomizeSpec::default_profile();
+        let mut concurrencies = std::collections::HashSet::new();
+        let mut memories = std::collections::HashSet::new();
+        for seed in 0..512u64 {
+            let fp = generate(seed, &spec);
+            concurrencies.insert(fp.hardware_concurrency);
+            memories.insert(fp.device_memory_gb);
+        }
+        assert!(
+            concurrencies.len() > 1,
+            "hardwareConcurrency must vary across sessions"
+        );
+        assert!(
+            memories.len() > 1,
+            "deviceMemory must vary across sessions"
+        );
+    }
+
+    #[test]
+    fn allow_mode_zeroes_noise_seeds_noise_mode_does_not() {
+        // Canvas Allow → no noise; canvas Noise → non-zero seed.
+        let allow = FingerprintRandomizeSpec {
+            canvas: FingerprintMode::Allow,
+            audio: FingerprintMode::Allow,
+            ..FingerprintRandomizeSpec::default_profile()
+        };
+        let fp = generate(99, &allow);
+        assert_eq!(fp.canvas_noise, 0);
+        assert_eq!(fp.audio_noise, 0);
+
+        let noised = FingerprintRandomizeSpec {
+            canvas: FingerprintMode::Noise,
+            audio: FingerprintMode::Noise,
+            ..FingerprintRandomizeSpec::default_profile()
+        };
+        let fp = generate(99, &noised);
+        assert_ne!(fp.canvas_noise, 0);
+        assert_ne!(fp.audio_noise, 0);
+    }
+
+    #[test]
+    fn noise_seed_grows_with_intensity() {
+        // Higher intensity → wider noise-seed bit budget → larger
+        // typical magnitudes. Compare maxima across many seeds.
+        let mk = |intensity: f32| FingerprintRandomizeSpec {
+            canvas: FingerprintMode::Noise,
+            intensity,
+            ..FingerprintRandomizeSpec::default_profile()
+        };
+        let low = mk(0.1);
+        let high = mk(1.0);
+        let max_low = (0..256u64).map(|s| generate(s, &low).canvas_noise).max().unwrap();
+        let max_high = (0..256u64).map(|s| generate(s, &high).canvas_noise).max().unwrap();
+        assert!(
+            max_high > max_low,
+            "intensity 1.0 max {max_high} should exceed intensity 0.1 max {max_low}"
+        );
+    }
+
+    #[test]
+    fn webgl_vendor_and_platform_stay_consistent() {
+        let spec = FingerprintRandomizeSpec::default_profile();
+        for seed in 0..256u64 {
+            let fp = generate(seed, &spec);
+            if fp.webgl_vendor.starts_with("Apple") {
+                assert_eq!(fp.user_agent_data.platform, "macOS");
+            }
+        }
+    }
+
+    #[test]
+    fn spoofed_fingerprint_roundtrips_through_serde() {
+        let fp = generate(0x1234_5678, &FingerprintRandomizeSpec::default_profile());
+        let json = serde_json::to_string(&fp).unwrap();
+        let back: SpoofedFingerprint = serde_json::from_str(&json).unwrap();
+        assert_eq!(fp, back);
     }
 
     #[cfg(feature = "lisp")]

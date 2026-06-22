@@ -27,6 +27,7 @@ pub mod blocker;
 pub mod boost;
 pub mod bridge;
 pub mod cast;
+pub mod cdp;
 pub mod clear_site_data;
 pub mod command;
 #[cfg(feature = "ts")]
@@ -47,6 +48,7 @@ pub mod dom;
 pub mod dom_diff;
 pub mod download;
 pub mod effect;
+pub mod engine;
 #[cfg(feature = "eval")]
 pub mod eval;
 pub mod extension;
@@ -68,6 +70,7 @@ pub mod lisp;
 pub mod llm;
 pub mod llm_completion;
 pub mod locale;
+pub mod markdown;
 pub mod media_session;
 pub mod multiplayer_cursor;
 pub mod navigation_intent;

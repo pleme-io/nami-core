@@ -31,12 +31,33 @@
 //! registered spec blocks the outbound fetch; matching any selector
 //! of any registered spec removes the subtree.
 
+use std::cell::OnceCell;
+
 use crate::dom::{Document, Node, NodeData};
 use crate::selector::{OwnedContext, Selector};
+use hayai::{MatchEngine, RegexMatcher};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "lisp")]
 use tatara_lisp::DeriveTataraDomain;
+
+/// Built-in tracker blocklist consumed by
+/// [`BlockerRegistry::with_default_trackers`]. ~120 widely-documented
+/// public tracker / analytics / ad endpoints. One domain or path
+/// fragment per line; `#` comments + blank lines are stripped.
+const DEFAULT_TRACKERS: &str = include_str!("trackers.txt");
+
+/// Parse [`DEFAULT_TRACKERS`] into the live domain list — strips
+/// comments + blank lines, trims each entry.
+#[must_use]
+pub fn default_tracker_domains() -> Vec<String> {
+    DEFAULT_TRACKERS
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(str::to_owned)
+        .collect()
+}
 
 /// One blocker rule.
 #[cfg_attr(feature = "lisp", derive(DeriveTataraDomain))]
@@ -58,11 +79,85 @@ pub struct BlockerSpec {
     pub description: Option<String>,
 }
 
-/// Registry of blocker rules. Cheap to clone (Arc-ish internals
-/// would arrive later; V1 uses plain Vec).
-#[derive(Debug, Clone, Default)]
+/// Compiled URL matcher — a hayai [`RegexMatcher`] over every domain
+/// pattern of every spec, plus a parallel index mapping each compiled
+/// pattern back to the spec that contributed it. One DFA pass replaces
+/// the old O(specs×domains) substring scan.
+struct UrlMatcher {
+    matcher: RegexMatcher,
+    /// `pattern_to_spec[i]` = index (into `specs`) of the spec that
+    /// owns compiled pattern `i`. Patterns are appended spec-by-spec,
+    /// so this vector is non-decreasing.
+    pattern_to_spec: Vec<usize>,
+}
+
+impl UrlMatcher {
+    /// Build a matcher from the registry's specs. Each domain substring
+    /// is lower-cased + regex-escaped so the compiled DFA does a plain
+    /// case-insensitive substring match (URLs are lower-cased on check).
+    /// Returns `None` when there are no domain patterns at all (an
+    /// all-selector registry has nothing to match URLs against).
+    fn build(specs: &[BlockerSpec]) -> Option<Self> {
+        let mut patterns: Vec<String> = Vec::new();
+        let mut pattern_to_spec: Vec<usize> = Vec::new();
+        for (spec_idx, spec) in specs.iter().enumerate() {
+            for d in &spec.domains {
+                patterns.push(regex::escape(&d.to_ascii_lowercase()));
+                pattern_to_spec.push(spec_idx);
+            }
+        }
+        if patterns.is_empty() {
+            return None;
+        }
+        // Every pattern is a regex-escaped literal, so compilation
+        // cannot fail; if it ever does, surface it rather than masking.
+        let matcher = RegexMatcher::new(&patterns)
+            .expect("regex-escaped literal patterns always compile");
+        Some(Self {
+            matcher,
+            pattern_to_spec,
+        })
+    }
+
+    /// First spec index whose domain matched `lower_url`, preserving the
+    /// original "first registered matching spec" semantics. Returns the
+    /// lowest spec index among all matched patterns.
+    fn first_spec(&self, lower_url: &str) -> Option<usize> {
+        self.matcher
+            .check(lower_url)
+            .into_iter()
+            .map(|pat_idx| self.pattern_to_spec[pat_idx])
+            .min()
+    }
+}
+
+/// Registry of blocker rules. URL matching is routed through a lazily
+/// compiled hayai [`RegexMatcher`] (one DFA pass); the cache is reset
+/// on any mutation so it always reflects the current spec set.
+#[derive(Default)]
 pub struct BlockerRegistry {
     specs: Vec<BlockerSpec>,
+    /// Lazily built on first `block_url`; invalidated on insert/extend.
+    matcher: OnceCell<Option<UrlMatcher>>,
+}
+
+impl std::fmt::Debug for BlockerRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlockerRegistry")
+            .field("specs", &self.specs)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Clone for BlockerRegistry {
+    fn clone(&self) -> Self {
+        // Don't carry the compiled cache across clones — it rebuilds
+        // lazily from `specs`, so a fresh empty cell stays correct.
+        Self {
+            specs: self.specs.clone(),
+            matcher: OnceCell::new(),
+        }
+    }
 }
 
 impl BlockerRegistry {
@@ -71,15 +166,42 @@ impl BlockerRegistry {
         Self::default()
     }
 
+    /// A registry seeded with the built-in ~120-entry tracker
+    /// blocklist (see `trackers.txt`). One `(defblocker)`-shaped spec
+    /// named `"default-trackers"` carrying every embedded domain.
+    #[must_use]
+    pub fn with_default_trackers() -> Self {
+        let mut reg = Self::new();
+        reg.insert(BlockerSpec {
+            name: "default-trackers".into(),
+            domains: default_tracker_domains(),
+            selectors: Vec::new(),
+            description: Some(
+                "Built-in tracker blocklist — well-known third-party analytics, ads, and session-replay endpoints.".into(),
+            ),
+        });
+        reg
+    }
+
+    /// Drop the compiled URL matcher so the next `block_url` rebuilds it
+    /// from the current spec set.
+    fn invalidate(&mut self) {
+        self.matcher.take();
+    }
+
     pub fn insert(&mut self, spec: BlockerSpec) {
         self.specs.retain(|s| s.name != spec.name);
         self.specs.push(spec);
+        self.invalidate();
     }
 
     pub fn extend(&mut self, specs: impl IntoIterator<Item = BlockerSpec>) {
         for s in specs {
-            self.insert(s);
+            // Inline the dedupe so we only invalidate once at the end.
+            self.specs.retain(|existing| existing.name != s.name);
+            self.specs.push(s);
         }
+        self.invalidate();
     }
 
     #[must_use]
@@ -97,17 +219,18 @@ impl BlockerRegistry {
     }
 
     /// Returns the first spec whose domain list matches the URL, or
-    /// `None` if nothing blocks it. The check is case-insensitive
-    /// substring matching against the URL; real-world tracker lists
-    /// live at this fidelity.
+    /// `None` if nothing blocks it. Matching is case-insensitive
+    /// substring matching against the URL — real-world tracker lists
+    /// live at this fidelity — but runs as a single hayai `RegexSet`
+    /// DFA pass over all domains rather than an O(specs×domains) scan.
     #[must_use]
     pub fn block_url(&self, url: &str) -> Option<&BlockerSpec> {
         let lower = url.to_ascii_lowercase();
-        self.specs.iter().find(|spec| {
-            spec.domains
-                .iter()
-                .any(|d| lower.contains(&d.to_ascii_lowercase()))
-        })
+        let matcher = self
+            .matcher
+            .get_or_init(|| UrlMatcher::build(&self.specs))
+            .as_ref()?;
+        matcher.first_spec(&lower).map(|i| &self.specs[i])
     }
 }
 
@@ -377,6 +500,102 @@ mod tests {
         let report = apply(&mut doc, &reg);
         assert_eq!(report.applied(), 0);
         assert!(reg.block_url("https://example.com").is_none());
+    }
+
+    #[test]
+    fn hayai_backed_match_handles_multiple_domains_one_pass() {
+        // Many specs, many domains — the hayai DFA matches in one pass
+        // and still reports the first registered matching spec.
+        let mut reg = BlockerRegistry::new();
+        reg.insert(spec("ads", &["doubleclick.net", "adnxs.com"], &[]));
+        reg.insert(spec("analytics", &["google-analytics.com", "segment.io"], &[]));
+        assert_eq!(
+            reg.block_url("https://ib.adnxs.com/ttj").unwrap().name,
+            "ads"
+        );
+        assert_eq!(
+            reg.block_url("https://api.segment.io/v1/track").unwrap().name,
+            "analytics"
+        );
+        assert!(reg.block_url("https://example.com/").is_none());
+    }
+
+    #[test]
+    fn matcher_rebuilds_after_mutation() {
+        // The lazily-compiled matcher must reflect inserts/extends made
+        // after the first block_url forced compilation.
+        let mut reg = BlockerRegistry::new();
+        reg.insert(spec("a", &["a.com"], &[]));
+        assert!(reg.block_url("https://a.com/x").is_some()); // forces build
+        assert!(reg.block_url("https://b.com/x").is_none());
+        reg.insert(spec("b", &["b.com"], &[])); // invalidates cache
+        assert_eq!(reg.block_url("https://b.com/x").unwrap().name, "b");
+        reg.extend([spec("c", &["c.com"], &[])]);
+        assert_eq!(reg.block_url("https://c.com/x").unwrap().name, "c");
+    }
+
+    #[test]
+    fn cloned_registry_matches_independently() {
+        let mut reg = BlockerRegistry::new();
+        reg.insert(spec("a", &["a.com"], &[]));
+        let _ = reg.block_url("https://a.com"); // warm the original cache
+        let clone = reg.clone();
+        // The clone rebuilds its own cache lazily and matches correctly.
+        assert_eq!(clone.block_url("https://a.com/x").unwrap().name, "a");
+        assert!(clone.block_url("https://z.com/x").is_none());
+    }
+
+    #[test]
+    fn special_regex_chars_in_domain_are_literal() {
+        // A path fragment with regex metacharacters must match literally
+        // (regex::escape), not as a pattern.
+        let mut reg = BlockerRegistry::new();
+        reg.insert(spec("pixel", &["facebook.com/tr?id="], &[]));
+        assert!(reg
+            .block_url("https://www.facebook.com/tr?id=123&ev=PageView")
+            .is_some());
+        // The `?` is literal — a URL missing it must not match.
+        assert!(reg.block_url("https://www.facebook.com/troll").is_none());
+    }
+
+    #[test]
+    fn default_trackers_blocks_known_tracker_allows_example() {
+        let reg = BlockerRegistry::with_default_trackers();
+        assert_eq!(reg.len(), 1);
+        // A representative sample of the seeded list is blocked.
+        for url in [
+            "https://www.google-analytics.com/collect?v=1",
+            "https://connect.facebook.net/en_US/fbevents.js",
+            "https://b.scorecardresearch.com/beacon.js",
+            "https://static.hotjar.com/c/hotjar-123.js",
+            "https://cdn.segment.com/analytics.js/v1/abc/analytics.min.js",
+            "https://api.mixpanel.com/track",
+            "https://cdn.amplitude.com/libs/amplitude.js",
+            "https://edge.fullstory.com/s/fs.js",
+            "https://www.googletagmanager.com/gtm.js?id=GTM-XXXX",
+        ] {
+            assert!(
+                reg.block_url(url).is_some(),
+                "expected default trackers to block {url}"
+            );
+            assert_eq!(reg.block_url(url).unwrap().name, "default-trackers");
+        }
+        // example.com (and other benign hosts) pass through.
+        assert!(reg.block_url("https://example.com/").is_none());
+        assert!(reg.block_url("https://docs.rs/nami-core").is_none());
+        assert!(reg.block_url("https://news.example.org/article").is_none());
+    }
+
+    #[test]
+    fn default_tracker_domains_is_clean_and_substantial() {
+        let domains = default_tracker_domains();
+        // The list is real (~120 entries) and well-formed.
+        assert!(domains.len() >= 100, "expected ~120 trackers, got {}", domains.len());
+        for d in &domains {
+            assert!(!d.is_empty());
+            assert!(!d.starts_with('#'));
+            assert_eq!(d.trim(), d, "entry has surrounding whitespace: {d:?}");
+        }
     }
 
     #[cfg(feature = "lisp")]

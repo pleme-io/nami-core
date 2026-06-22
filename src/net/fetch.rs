@@ -162,13 +162,43 @@ impl FetchClient {
             }
         }
 
-        // Without a real HTTP backend, return an error indicating the
-        // feature is not available. Consumers should either:
-        // 1. Enable the `network` feature for todoku integration
-        // 2. Use their own HTTP client and construct Response values
-        Err(FetchError::NetworkError(
-            "no HTTP backend configured — enable the `network` feature or provide responses directly".to_string(),
-        ))
+        #[cfg(feature = "network")]
+        {
+            self.fetch_via_todoku(url)
+        }
+        // Without the `network` feature there is no HTTP backend. Consumers
+        // either enable `network` (todoku) or bring their own client and
+        // construct `Response` values via `response_from_parts`.
+        #[cfg(not(feature = "network"))]
+        {
+            Err(FetchError::NetworkError(
+                "no HTTP backend configured — enable the `network` feature or provide responses directly".to_string(),
+            ))
+        }
+    }
+
+    /// Fetch via the todoku HTTP client — the fleet HTTP layer (shared retry,
+    /// [`todoku::TlsProfile`], SSRF guard). `FetchClient::fetch` is a *sync*
+    /// API, so this drives todoku's async client through its
+    /// [`todoku::BlockingHttpClient`] facade: one HTTP implementation fleet-wide
+    /// (solve-once), not a parallel blocking client.
+    #[cfg(feature = "network")]
+    fn fetch_via_todoku(&self, url: &Url) -> Result<Response, FetchError> {
+        let client = todoku::HttpClient::builder()
+            .user_agent(&self.config.user_agent)
+            .timeout(std::time::Duration::from_millis(self.config.timeout_ms))
+            .build()
+            .map_err(map_todoku_err)?;
+        let blocking = todoku::BlockingHttpClient::new(client).map_err(map_todoku_err)?;
+        let resp = blocking.get_response(url.as_str()).map_err(map_todoku_err)?;
+        let headers = resp.headers.into_iter().collect::<HashMap<String, String>>();
+        let final_url = Url::parse(&resp.final_url).unwrap_or_else(|_| url.clone());
+        Ok(Response {
+            status: resp.status,
+            headers,
+            body: resp.body,
+            url: final_url,
+        })
     }
 
     /// Create a `Response` from raw parts (for consumers that bring their own HTTP client).
@@ -195,6 +225,23 @@ impl FetchClient {
     pub fn resolve_url(base: &Url, href: &str) -> Result<Url, FetchError> {
         base.join(href)
             .map_err(|e| FetchError::InvalidUrl(format!("{e}")))
+    }
+}
+
+/// Map a [`todoku::TodokuError`] into the nami-core [`FetchError`] taxonomy.
+#[cfg(feature = "network")]
+fn map_todoku_err(e: todoku::TodokuError) -> FetchError {
+    use todoku::TodokuError as T;
+    match e {
+        T::Http { status, body } => FetchError::HttpError {
+            status,
+            message: body,
+        },
+        #[allow(clippy::cast_possible_truncation)]
+        T::Timeout(d) => FetchError::Timeout(d.as_millis() as u64),
+        T::Ssrf(reason) => FetchError::Blocked(reason.to_string()),
+        // TodokuError is #[non_exhaustive]; everything else is a network error.
+        other => FetchError::NetworkError(other.to_string()),
     }
 }
 

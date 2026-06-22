@@ -1,0 +1,176 @@
+# Built-in tracker blocklist for `BlockerRegistry::with_default_trackers()`.
+#
+# ~120 widely-documented public third-party tracker / analytics /
+# advertising / session-replay endpoints. Sourced from the well-known
+# patterns in EasyPrivacy, Disconnect's tracker list, and uBlock Origin's
+# default filters. One domain or path-fragment per line; lines starting
+# with `#` and blank lines are ignored.
+#
+# Matching is case-insensitive substring against the full URL, compiled
+# into a hayai RegexSet DFA (each entry is regex-escaped). Use fully-
+# qualified domains, or path fragments (e.g. `facebook.com/tr`) for
+# pixel endpoints that share a host with non-tracking content.
+
+# ── Google / Alphabet analytics + ads ───────────────────────────────
+google-analytics.com
+googletagmanager.com
+googletagservices.com
+googlesyndication.com
+googleadservices.com
+doubleclick.net
+google-analytics.com/collect
+pagead2.googlesyndication.com
+adservice.google.com
+www.googleadservices.com
+partner.googleadservices.com
+analytics.google.com
+g.doubleclick.net
+stats.g.doubleclick.net
+fundingchoicesmessages.google.com
+
+# ── Meta / Facebook ──────────────────────────────────────────────────
+facebook.com/tr
+connect.facebook.net
+facebook.com/plugins
+pixel.facebook.com
+an.facebook.com
+graph.facebook.com/network_ads_common
+
+# ── Comscore / Scorecard ─────────────────────────────────────────────
+scorecardresearch.com
+sb.scorecardresearch.com
+b.scorecardresearch.com
+comscore.com
+
+# ── Product analytics ────────────────────────────────────────────────
+segment.io
+segment.com
+api.segment.io
+cdn.segment.com
+mixpanel.com
+api.mixpanel.com
+cdn.mxpnl.com
+amplitude.com
+api.amplitude.com
+cdn.amplitude.com
+api2.amplitude.com
+heap.io
+heapanalytics.com
+cdn.heapanalytics.com
+fullstory.com
+rs.fullstory.com
+edge.fullstory.com
+mouseflow.com
+cdn.mouseflow.com
+smartlook.com
+rec.smartlook.com
+posthog.com
+app.posthog.com
+matomo.cloud
+plausible.io
+
+# ── Session replay / heatmaps ────────────────────────────────────────
+hotjar.com
+static.hotjar.com
+script.hotjar.com
+in.hotjar.com
+insights.hotjar.com
+crazyegg.com
+script.crazyegg.com
+luckyorange.com
+cdn.luckyorange.com
+inspectlet.com
+cdn.inspectlet.com
+clarity.ms
+www.clarity.ms
+c.clarity.ms
+
+# ── Ad networks / exchanges ──────────────────────────────────────────
+adnxs.com
+ib.adnxs.com
+secure.adnxs.com
+rubiconproject.com
+fastlane.rubiconproject.com
+pubmatic.com
+ads.pubmatic.com
+casalemedia.com
+openx.net
+us-u.openx.net
+criteo.com
+static.criteo.net
+bidder.criteo.com
+criteo.net
+taboola.com
+cdn.taboola.com
+trc.taboola.com
+outbrain.com
+widgets.outbrain.com
+amplify.outbrain.com
+adroll.com
+d.adroll.com
+s.adroll.com
+media.net
+contextual.media.net
+33across.com
+sharethrough.com
+indexww.com
+yieldmo.com
+gumgum.com
+smartadserver.com
+adform.net
+adform.com
+revcontent.com
+trends.revcontent.com
+bidswitch.net
+3lift.com
+adsymptotic.com
+crwdcntrl.net
+agkn.com
+demdex.net
+omtrdc.net
+2o7.net
+
+# ── Tag / consent / CDP managers ─────────────────────────────────────
+tealium.com
+tags.tiqcdn.com
+ensighten.com
+nr-data.net
+js-agent.newrelic.com
+bam.nr-data.net
+bat.bing.com
+quantserve.com
+quantcount.com
+secure.quantserve.com
+chartbeat.com
+static.chartbeat.com
+ping.chartbeat.net
+parsely.com
+cdn.parsely.com
+branch.io
+app.link
+api2.branch.io
+kissmetrics.com
+trk.kissmetrics.io
+optimizely.com
+cdn.optimizely.com
+logx.optimizely.com
+sentry.io
+browser.sentry-cdn.com
+bugsnag.com
+notify.bugsnag.com
+sessions.bugsnag.com
+yandex.ru/metrika
+mc.yandex.ru
+cdn.mxpnl.com/libs
+analytics.tiktok.com
+analytics-sg.tiktok.com
+business-api.tiktok.com
+ads.linkedin.com
+px.ads.linkedin.com
+snap.licdn.com
+ads.pinterest.com
+ct.pinterest.com
+ads.twitter.com
+analytics.twitter.com
+t.co/i/adsct
+static.ads-twitter.com

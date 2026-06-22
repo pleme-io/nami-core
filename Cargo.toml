@@ -49,6 +49,10 @@ blake3 = "1.8"
 # Optional regex support for (deffind) and future DSLs that want
 # pattern-matching against live page text.
 regex = "1"
+# Compiled RegexSet DFA for blocker URL matching — one DFA pass over
+# all tracker domain patterns instead of an O(specs×domains) substring
+# scan. nami-core is hayai's first real fleet consumer.
+hayai = { git = "https://github.com/pleme-io/hayai" }
 # Source-language parsing (JSX/TSX/Vue/Svelte). Feature-gated.
 tree-sitter = { version = "0.25", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }

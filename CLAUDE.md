@@ -568,7 +568,8 @@ and dimensions for all elements in the styled tree.
 
 | Type | Description |
 |------|-------------|
-| `LayoutEngine` | Wraps `TaffyTree`. Methods: `compute(styled_tree, viewport) -> LayoutTree` |
+| `LayoutEngine` | Wraps `TaffyTree<NodeContext>`. Methods: `compute(styled_tree, viewport) -> LayoutTree` (built-in single-line floor); `compute_with_measure(styled_tree, viewport, &dyn TextMeasure) -> LayoutTree` (real wrapped-text heights) |
+| `TextMeasure` | The mockable text-measurement seam: `measure(text, font_size_px, max_width) -> Size` (height = `line_count × line_height`). Impls: `SingleLineMeasure` (floor) · `MockTextMeasure` (deterministic) · `GlyphonTextMeasure` (real, in namimado) |
 | `LayoutTree` | Root `LayoutBox` + viewport `Size` |
 | `LayoutBox` | `x, y, width, height, tag, node_index, children`. Methods: `contains_point()`, `hit_test()` |
 | `Size` | `width: f32, height: f32` |
@@ -579,10 +580,25 @@ and dimensions for all elements in the styled tree.
 - `margin-*`: top/right/bottom/left pixel values
 - `padding-*`: top/right/bottom/left pixel values
 
+**Text measurement seam (DONE — the `TextMeasure` trait).** A `#text`
+node is a taffy LEAF carrying a typed `NodeContext { text, font_size }`;
+`LayoutEngine::compute_with_measure(&styled, viewport, &dyn TextMeasure)`
+drives `compute_layout_with_measure` so a text box's height is its
+WRAPPED `line_count × line_height` — the fix for the single-line floor
+that let a long paragraph overlap following content. `TextMeasure` is the
+mockable side-effect seam (TYPED-SPEC + INTERPRETER TRIPLET):
+`MockTextMeasure` (deterministic char/line metrics, what the
+`tests/css_matrix.rs` wrap rows assert) + `SingleLineMeasure` (the
+built-in width-agnostic floor). `compute()` delegates to
+`compute_with_measure(SingleLineMeasure)` so EVERY existing caller/test
+keeps byte-identical behavior with no measurer. The REAL glyphon/
+cosmic-text impl (`GlyphonTextMeasure`) lives in the consumer
+(namimado) so measured height == drawn height. `StyledNode.text:
+Option<String>` carries the string layout measures.
+
 **Layout improvements needed** (ordered by impact):
 1. Inline layout (taffy lacks inline flow -- supplement with custom pass or text layout engine)
-2. Text measurement (feed actual text dimensions to taffy; currently zero intrinsic size)
-3. Percentage units (resolve `%` against parent dimensions)
+2. Percentage units (resolve `%` against parent dimensions)
 4. Auto margins (`margin: auto` for centering)
 5. Table layout algorithm
 6. Positioned elements (`position: absolute/fixed/relative`)

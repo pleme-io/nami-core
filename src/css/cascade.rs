@@ -295,8 +295,13 @@ impl StyleResolver {
         match &node.data {
             NodeData::Element(el) => {
                 tag = el.tag.clone();
-                // Apply default block display for known block elements.
-                if is_block_element(&el.tag) {
+                // UA display defaults. Non-rendered elements (head/style/script/
+                // title/meta/...) are display:none so their text content never
+                // paints (otherwise raw CSS/JS source leaks into the page);
+                // block elements default to block; everything else stays inline.
+                if is_non_rendered_element(&el.tag) {
+                    style.set("display", "none");
+                } else if is_block_element(&el.tag) {
                     style.set("display", "block");
                 }
                 // Match rules against this element.
@@ -383,6 +388,15 @@ fn is_block_element(tag: &str) -> bool {
             | "figcaption"
             | "details"
             | "summary"
+    )
+}
+
+/// Elements whose content is never rendered — UA `display: none`. Their text
+/// (raw CSS, JS source, document metadata) must not paint into the page.
+fn is_non_rendered_element(tag: &str) -> bool {
+    matches!(
+        tag,
+        "head" | "style" | "script" | "title" | "meta" | "link" | "base" | "noscript" | "template"
     )
 }
 
@@ -527,6 +541,17 @@ mod tests {
         let styled = resolver.resolve(&doc);
         let span = find_styled(&styled.root, "span").expect("span");
         assert_eq!(span.style.get("color"), Some("#00ff00"));
+    }
+
+    #[test]
+    fn non_rendered_elements_are_display_none() {
+        // <style>/<script>/<head> content must not paint — they are UA
+        // display:none, so their raw text never leaks into the page.
+        let doc = Document::parse("<style>body{color:red}</style><div>x</div>");
+        let resolver = StyleResolver::new();
+        let styled = resolver.resolve(&doc);
+        let style_el = find_styled(&styled.root, "style").expect("style element");
+        assert_eq!(style_el.style.display(), "none");
     }
 
     #[test]

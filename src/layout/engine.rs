@@ -160,11 +160,25 @@ impl LayoutEngine {
             }
         }
 
-        // Parse height if specified.
-        if let Some(h) = styled.style.get("height") {
-            if let Some(px) = parse_px_value(h) {
-                style.size.height = Dimension::Length(px);
-            }
+        // Parse height if specified; otherwise a `#text` node gets a default
+        // single-line height derived from its (inherited) font-size, so
+        // text-bearing boxes don't collapse to zero and get skipped by the
+        // paint layer. taffy has no text intrinsic size — this is the M1.2
+        // text-measurement floor (real per-line wrapping/measurement is the
+        // fuller fix; this ensures auto-sized text RENDERS). The parent block
+        // element auto-sizes to contain the sized #text child.
+        if let Some(px) = styled.style.get("height").and_then(parse_px_value) {
+            style.size.height = Dimension::Length(px);
+        } else if styled.tag == "#text" {
+            let font_size = styled
+                .style
+                .get("font-size")
+                .and_then(parse_px_value)
+                .unwrap_or(16.0);
+            // 1.4 default line-height factor (unitless line-height handling is
+            // finer M1 work; a px line-height is intentionally not parsed here
+            // to avoid mistreating a unitless multiplier as pixels).
+            style.size.height = Dimension::Length(font_size * 1.4);
         }
 
         // Parse margins.
@@ -364,6 +378,30 @@ mod tests {
         assert_eq!(parse_px_value("50"), Some(50.0));
         assert_eq!(parse_px_value(" 25px "), Some(25.0));
         assert_eq!(parse_px_value("auto"), None);
+    }
+
+    #[test]
+    fn text_node_gets_default_height() {
+        // An auto-sized #text node must not collapse to zero (else the paint
+        // layer skips it). It gets a default single-line height, and the
+        // parent block auto-sizes to contain it.
+        let styled = StyledTree {
+            root: make_styled_node(
+                "p",
+                "block",
+                vec![make_styled_node("#text", "inline", vec![])],
+            ),
+        };
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute(&styled, Size::new(800.0, 600.0));
+        assert!(
+            layout.root.children[0].height > 0.0,
+            "auto-sized #text node should have non-zero height"
+        );
+        assert!(
+            layout.root.height > 0.0,
+            "parent block should auto-size to contain its text"
+        );
     }
 
     #[test]

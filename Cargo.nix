@@ -8449,7 +8449,7 @@ rec {
           "ts" = [ "dep:tree-sitter" "dep:tree-sitter-typescript" "dep:tree-sitter-svelte-next" ];
           "wasm" = [ "dep:wasmtime" "dep:wasmtime-wasi" "dep:wasi-common" ];
         };
-        resolvedDefaultFeatures = [ "config" "default" "eval" "lisp" "network" "signatures" "ts" "wasm" ];
+        resolvedDefaultFeatures = [ "config" "default" "eval" "lisp" "network" "signatures" "testkit" "ts" "wasm" ];
       };
       "native-tls" = rec {
         crateName = "native-tls";

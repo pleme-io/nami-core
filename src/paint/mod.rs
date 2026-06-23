@@ -268,9 +268,16 @@ fn walk_box(
     }
 
     // 3. Text after the box's own rect. Emit for boxes whose DOM node has
-    //    direct text content. Color falls back to None (renderer uses its
-    //    scheme default fg) when the box carries no `color`.
-    if let Some(node) = dom_node {
+    //    direct text content, EXCEPT `display:none` elements — their text
+    //    (raw CSS in <style>, JS source in <script>, document metadata)
+    //    must never paint into the page. The cascade marks them
+    //    `Display::None`; we honor that here so a non-rendered element's
+    //    text content is a visible absence, not leaked source. (Load-bearing
+    //    fix surfaced by the testkit CSS matrix — <style> text was painting.)
+    let is_display_none = styled
+        .map(|s| s.style.display() == crate::css::values::Display::None)
+        .unwrap_or(false);
+    if let Some(node) = dom_node.filter(|_| !is_display_none) {
         let text = direct_text(node);
         if !text.trim().is_empty() {
             // Typed color directly from the cascade; TRANSPARENT marks
@@ -521,5 +528,47 @@ mod tests {
         if let Some(src) = img {
             assert_eq!(src, "https://example.com/cat.png");
         }
+    }
+}
+
+/// The same paint assertions, re-expressed through the ONE
+/// `nami_core::testkit` vocabulary. Runs only under `--features testkit`;
+/// the hand-rolled tests above keep the default-build coverage.
+#[cfg(all(test, feature = "testkit"))]
+mod testkit_migrated {
+    use crate::css::values::Color;
+    use crate::testkit::Probe;
+
+    #[test]
+    fn fixture_emits_div_rect_and_white_hello_text() {
+        Probe::html(
+            "<style>div{background-color:#3050ff;width:200px;height:100px} \
+             p{color:#ffffff;height:30px}</style><div><p>Hello</p></div>",
+        )
+        .paint()
+        .rect_with_color(Color::hex("#3050ff"))
+        .text_with_color("Hello", Color::rgb8(255, 255, 255));
+    }
+
+    #[test]
+    fn transparent_background_emits_no_rect() {
+        Probe::html(
+            "<style>div{width:100px;height:50px} p{color:#000000;height:20px}</style>\
+             <div><p>Plain</p></div>",
+        )
+        .paint()
+        .rect_count(0)
+        .text("Plain");
+    }
+
+    #[test]
+    fn display_none_emits_no_rect_and_no_leaked_text() {
+        Probe::html(
+            "<style>div{display:none;background-color:#ff0000;width:50px;height:50px}</style>\
+             <div>secret</div>",
+        )
+        .paint()
+        .rect_count(0)
+        .no_text("secret");
     }
 }

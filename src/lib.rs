@@ -131,6 +131,8 @@ pub mod tab_group;
 pub mod tab_hibernate;
 pub mod tab_attestation;
 pub mod tab_macro;
+#[cfg(feature = "testkit")]
+pub mod testkit;
 pub mod tab_preview;
 pub mod text_spacing;
 pub mod time_travel;

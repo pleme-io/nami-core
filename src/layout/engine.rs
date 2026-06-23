@@ -526,3 +526,56 @@ mod tests {
         assert_eq!(layout.root.children[0].height, 0.0);
     }
 }
+
+/// The same layout assertions, re-expressed through the ONE
+/// `nami_core::testkit` vocabulary. Runs only under `--features testkit`;
+/// the hand-rolled tests above keep the default-build coverage.
+#[cfg(all(test, feature = "testkit"))]
+mod testkit_migrated {
+    use crate::testkit::Probe;
+
+    #[test]
+    fn layout_with_fixed_width() {
+        Probe::html("<div style=\"width:200px;height:50px\"></div>")
+            .layout("div")
+            .width(200.0);
+    }
+
+    #[test]
+    fn vw_width_resolves_to_half_viewport() {
+        Probe::html("<div style=\"width:50vw;height:40px\"></div>")
+            .viewport(1280.0, 800.0)
+            .layout("div")
+            .width(640.0);
+    }
+
+    #[test]
+    fn vh_height_resolves_to_fraction_of_viewport() {
+        Probe::html("<div style=\"width:40px;height:25vh\"></div>")
+            .viewport(1280.0, 800.0)
+            .layout("div")
+            .height(200.0);
+    }
+
+    #[test]
+    fn rem_width_resolves_against_root_font() {
+        Probe::html("<div style=\"width:10rem;height:40px\"></div>")
+            .layout("div")
+            .width(160.0);
+    }
+
+    #[test]
+    fn em_width_resolves_against_node_font_size() {
+        Probe::html("<div style=\"font-size:32px;width:5em;height:40px\"></div>")
+            .layout("div")
+            .width(160.0);
+    }
+
+    #[test]
+    fn percent_width_resolves_against_viewport_basis() {
+        Probe::html("<div style=\"width:50%;height:40px\"></div>")
+            .viewport(1000.0, 800.0)
+            .layout("div")
+            .width(500.0);
+    }
+}

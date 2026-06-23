@@ -131,7 +131,15 @@ fn extract_property(prop: &Property<'_>) -> (String, String) {
                 .last()
                 .map_or_else(String::new, |layer| format_css_color(&layer.color)),
         ),
-        Property::Display(d) => ("display".to_string(), format!("{d:?}").to_lowercase()),
+        // `display` value via lightningcss's canonical serializer — NOT
+        // `format!("{d:?}")`, whose Debug form is
+        // `"pair(displaypair { outside: block, inside: flow, ... })"`,
+        // which `Display::parse` can't read (it falls back to `Inline`,
+        // silently dropping `block`/`flex`/`none`). The canonical form is
+        // `"block"` / `"flex"` / `"none"` / `"inline"`, which `Display::parse`
+        // consumes directly. (Load-bearing fix surfaced by the testkit CSS
+        // matrix — the display-mode rows were all resolving to inline.)
+        Property::Display(_) => ("display".to_string(), css_value(prop)),
         Property::Width(_) => ("width".to_string(), css_value(prop)),
         Property::Height(_) => ("height".to_string(), css_value(prop)),
         Property::MarginTop(_) => ("margin-top".to_string(), css_value(prop)),
@@ -962,5 +970,96 @@ mod tests {
         let styled = resolver.resolve(&doc);
         let span = find_styled(&styled.root, "span").expect("span");
         assert_eq!(span.style.font_size(), Length::Px(24.0));
+    }
+}
+
+/// The same cascade assertions, re-expressed through the ONE
+/// `nami_core::testkit` vocabulary — the standardization layer. These
+/// run only under `--features testkit`; the hand-rolled tests above keep
+/// the default-build coverage. Adding the vocabulary form here proves the
+/// cascade reads the same as every other rendering test.
+#[cfg(all(test, feature = "testkit"))]
+mod testkit_migrated {
+    use crate::css::cascade::LengthProp;
+    use crate::css::values::{Color, Display, Length};
+    use crate::testkit::Probe;
+
+    #[test]
+    fn class_selector_matches_typed() {
+        Probe::html("<style>.box{background-color:#ff0000}</style>\
+                     <div class=\"box\">x</div><div id=\"bare\">y</div>")
+            .style(".box")
+            .background(Color::hex("#ff0000"));
+        Probe::html("<style>.box{background-color:#ff0000}</style>\
+                     <div class=\"box\">x</div><div id=\"bare\">y</div>")
+            .style("#bare")
+            .missing("background-color");
+    }
+
+    #[test]
+    fn id_selector_matches_typed() {
+        Probe::html("<style>#lead{color:blue}</style><p id=\"lead\">x</p>")
+            .style("#lead")
+            .color(Color::rgb8(0, 0, 255));
+    }
+
+    #[test]
+    fn compound_selector_requires_both() {
+        Probe::html("<style>div.card{color:red}</style>\
+                     <div class=\"card\">a</div><span class=\"card\">c</span>")
+            .style("div.card")
+            .color(Color::rgb8(255, 0, 0));
+        Probe::html("<style>div.card{color:red}</style>\
+                     <div class=\"card\">a</div><span class=\"card\">c</span>")
+            .style("span")
+            .missing("color");
+    }
+
+    #[test]
+    fn color_inherits_to_descendant() {
+        Probe::html("<style>div{color:#00ff00}</style><div><span>x</span></div>")
+            .style("span")
+            .color(Color::hex("#00ff00"));
+    }
+
+    #[test]
+    fn non_inherited_property_does_not_leak() {
+        Probe::html("<style>div{background-color:#123456}</style><div><span>x</span></div>")
+            .style("span")
+            .missing("background-color");
+    }
+
+    #[test]
+    fn font_size_inherits_typed() {
+        Probe::html("<style>div{font-size:24px}</style><div><span>x</span></div>")
+            .style("span")
+            .length(LengthProp::FontSize, Length::Px(24.0));
+    }
+
+    #[test]
+    fn inline_style_attribute_applies() {
+        Probe::html("<div style=\"color:#ff0000\">x</div>")
+            .style("div")
+            .color(Color::hex("#ff0000"))
+            .raw("color", "#ff0000");
+    }
+
+    #[test]
+    fn background_shorthand_becomes_background_color() {
+        Probe::html("<style>div{background:#112233;width:10px;height:10px}</style><div></div>")
+            .style("div")
+            .background(Color::hex("#112233"));
+    }
+
+    #[test]
+    fn block_elements_get_block_display() {
+        Probe::html("<div>content</div>").style("div").display(Display::Block);
+    }
+
+    #[test]
+    fn non_rendered_elements_are_display_none() {
+        Probe::html("<style>body{color:red}</style><div>x</div>")
+            .style("style")
+            .display(Display::None);
     }
 }

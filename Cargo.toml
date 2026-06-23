@@ -29,6 +29,12 @@ wasm = ["dep:wasmtime", "dep:wasmtime-wasi", "dep:wasi-common"]
 # browser-extension store to pleme-io's sekiban/tameshi attestation
 # chain. Off by default because most runtime paths don't need it.
 signatures = ["dep:ed25519-dalek", "dep:base64", "dep:curve25519-dalek"]
+# The rendering-pipeline test vocabulary (`nami_core::testkit`). Pure,
+# GPU-free fluent domain assertions over the CSS → layout → paint
+# pipeline (Probe / StyleAssert / LayoutAssert / PaintAssert). Dev/test
+# ONLY — feature-gated so it carries zero production-closure weight; a
+# consumer's dev-deps enable `nami-core/testkit`, never a build.
+testkit = []
 
 [dependencies]
 html5ever = "0.29"

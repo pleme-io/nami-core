@@ -141,9 +141,90 @@ Consumer renders (garasu, Servo, terminal, headless...)
 | `default` | DOM, CSS, layout, content, storage, config types | None |
 | `network` | HTTP fetch via todoku (authenticated, retry, timeout) | `todoku` |
 | `config` | shikumi config integration (file discovery, hot-reload) | `shikumi` |
+| `testkit` | `nami_core::testkit` rendering-assertion vocabulary (pure, GPU-free) | None |
 
 The default feature set has zero optional dependencies -- consumers that bring
-their own HTTP client and config loading only need the core pipeline.
+their own HTTP client and config loading only need the core pipeline. `testkit`
+is **dev/test-only**: a consumer enables it in `[dev-dependencies]`
+(`nami-core = { ..., features = ["testkit"] }`), never in a build — it carries
+zero production-closure weight.
+
+---
+
+## Testing Vocabulary
+
+Every rendering assumption in the pipeline (CSS cascade → layout → paint) is
+verified through ONE fluent vocabulary — `nami_core::testkit` — so the whole
+fleet of rendering tests reads the same way. This operationalizes the PRIME
+DIRECTIVE (one shared test library, no duplicated assertion shapes), the
+★★ CLOSED-LOOP MASS-SYNTHESIS rule (verification matrix as a forcing function),
+and ★★ UNREPRESENTABILITY (each assumption is named + checked, never implicit).
+
+### The probes
+
+`Probe::html(&str)` is the entry point (default viewport 1280×800; override with
+`.viewport(w, h)`). It re-runs the REAL pipeline (`Document::parse` →
+`StyleResolver::resolve` → `LayoutEngine::compute` → `paint::build_display_list`)
+— never a stubbed re-implementation. Three terminals, each chainable, each
+panicking on mismatch with an exact `expected <x>, got <y>` message:
+
+| Terminal | Asserts on | Methods |
+|----------|-----------|---------|
+| `.style(sel)` → `StyleAssert` | first element's `ComputedStyle` | `.display(Display)` · `.color(Color)` · `.background(Color)` · `.length(LengthProp, Length)` · `.raw(prop, value)` · `.missing(prop)` |
+| `.layout(sel)` → `LayoutAssert` | matching `LayoutBox`es (0.5px epsilon) | `.width(px)` · `.height(px)` · `.pos(x, y)` · `.exists()` · `.count(n)` |
+| `.paint()` → `PaintAssert` | the `DisplayList` | `.rect_with_color(Color)` · `.text(substr)` · `.text_with_color(substr, Color)` · `.no_text(substr)` · `.rect_count(n)` |
+
+Color asserts use a channel epsilon (< 0.01, sRGB f32). Terse constructors are
+always available on `Color` (no feature needed): `Color::rgb8(u8,u8,u8)` and
+`Color::hex(&str)` (panics on bad hex — test-only ergonomics; production code
+uses the fallible `Color::parse`).
+
+```rust
+use nami_core::testkit::Probe;
+use nami_core::css::{Color, Display, Length, LengthProp};
+
+Probe::html("<style>.card{color:#00ff00}</style><div class='card'>Hi</div>")
+    .style(".card").display(Display::Block).color(Color::hex("#00ff00"));
+Probe::html("<div style='width:50vw;height:40px'></div>")
+    .viewport(1280.0, 800.0).layout("div").width(640.0);
+Probe::html("<style>div{background:#3050ff;width:50px;height:50px}</style><div></div>")
+    .paint().rect_with_color(Color::hex("#3050ff"));
+```
+
+### The verification matrix
+
+`tests/css_matrix.rs` (gated on `testkit`) is the confidence forcing-function:
+one row per supported CSS-feature variant — every selector kind (tag/class/id/
+compound/universal/rightmost-descendant), every `Length` unit
+(px/em/rem/%/vw/vh/auto), every `Color` form (#rgb/#rrggbb/#rrggbbaa/rgb()/rgba()/
+named/currentColor), every `Display`, inheritance, `display:none` non-render,
+the `background:` shorthand, inline `style=""`. **All failures aggregate into
+one report before asserting** — one run reports every broken variant, not just
+the first. `matrix_covers_all_supported` pins the row count (`MIN_ROWS`) so a
+new CSS feature landing without a row fails CI.
+
+**How to add a row:** add a `Row { name, check }` to `MATRIX` (the `check`
+closure exercises the variant through a `Probe`, panicking on mismatch), then
+bump `MIN_ROWS`. The runner catches the panic so your row's failure message
+joins the aggregated report.
+
+### Property tests
+
+`tests/render_proptests.rs` proves the "no input crashes the renderer"
+guarantee over arbitrary inputs (bounded case counts so the suite stays fast):
+`Color::parse` never panics + stays in-range; `Length::parse`+`resolve` are
+total + finite-or-None; `CompoundSelector::parse`+`matches` are total; and the
+FULL pipeline never panics (and is deterministic) on arbitrary HTML+CSS.
+
+### Run it
+
+```bash
+cargo test --features testkit            # vocabulary + matrix + migrated + proptests
+cargo test                               # default build (proptests run; matrix/testkit gated off)
+```
+
+The GPU pixel peer (`PixelProbe`) lives in the consumer — see
+namimado's `render::testkit`.
 
 ---
 

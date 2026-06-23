@@ -71,6 +71,33 @@ impl Color {
         }
     }
 
+    /// Construct an opaque color from `0..=255` integer channels — the
+    /// terse test-authoring constructor. Public ergonomics for tests +
+    /// fixtures (`Color::rgb8(255, 0, 0)` reads cleaner than
+    /// `Color::parse("rgb(255,0,0)").unwrap()`); the in-range invariant
+    /// is preserved because `u8`/`255.0` can only produce `0.0..=1.0`.
+    #[must_use]
+    pub fn rgb8(r: u8, g: u8, b: u8) -> Color {
+        Color::from_u8(r, g, b)
+    }
+
+    /// Parse a hex color string (`#rgb` / `#rrggbb` / `#rrggbbaa`) into a
+    /// [`Color`], **panicking on a malformed hex** — the test-only
+    /// ergonomic counterpart to the fallible [`Color::parse`]. Production
+    /// code must use [`Color::parse`] (which returns `None`, never
+    /// panics); this exists so a test fixture can write `Color::hex("#3050ff")`
+    /// without an `.unwrap()` and gets a clear panic on a typo'd literal.
+    ///
+    /// # Panics
+    /// Panics if `s` is not a valid `#`-prefixed 3/6/8-digit hex color.
+    #[must_use]
+    pub fn hex(s: &str) -> Color {
+        match Color::parse(s) {
+            Some(c) => c,
+            None => panic!("Color::hex: invalid hex color literal {s:?}"),
+        }
+    }
+
     /// Parse a CSS color string into a valid-by-construction [`Color`].
     ///
     /// Supported forms:

@@ -603,6 +603,13 @@ pub struct StyledNode {
     pub tag: String,
     /// Computed style for this node.
     pub style: ComputedStyle,
+    /// The node's own text, set only for `#text` nodes (`NodeData::Text`);
+    /// `None` for every element / document / comment node. This is the
+    /// text the layout engine measures + wraps when it makes a `#text`
+    /// node a taffy leaf carrying a [`crate::layout::NodeContext`] — the
+    /// styled tree now carries the string to measure, so layout does not
+    /// have to re-walk the DOM to find it.
+    pub text: Option<String>,
     /// Child styled nodes.
     pub children: Vec<StyledNode>,
 }
@@ -664,6 +671,10 @@ impl StyleResolver {
             }
         }
         let tag;
+        // The node's own text — `Some(_)` only for `#text` nodes, so the
+        // layout engine can make a text-bearing leaf carry its string for
+        // measurement. Every other node type carries `None`.
+        let mut text = None;
 
         match &node.data {
             NodeData::Element(el) => {
@@ -706,8 +717,9 @@ impl StyleResolver {
                     }
                 }
             }
-            NodeData::Text(_) => {
+            NodeData::Text(s) => {
                 tag = "#text".to_string();
+                text = Some(s.clone());
             }
             NodeData::Document => {
                 tag = "#document".to_string();
@@ -732,6 +744,7 @@ impl StyleResolver {
             node_index: index,
             tag,
             style,
+            text,
             children,
         }
     }

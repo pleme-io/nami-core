@@ -47,7 +47,7 @@ use crate::css::cascade::{LengthProp, StyleResolver, StyleSheet, StyledNode, Sty
 use crate::css::selector::CompoundSelector;
 use crate::css::values::{Color, Display, Length};
 use crate::dom::{Document, ElementData, NodeData};
-use crate::layout::{LayoutBox, LayoutEngine, Size};
+use crate::layout::{LayoutBox, LayoutEngine, Size, TextMeasure};
 use crate::paint::{self, DisplayList, DrawCmd};
 
 /// Pixel epsilon for f32 layout-coordinate comparisons. Half a logical
@@ -196,7 +196,10 @@ impl Probe {
     ///
     /// Runs the full cascade + [`LayoutEngine::compute`] at the probe's
     /// viewport, then collects every [`LayoutBox`] whose `node_index`
-    /// cross-references a styled element matching `selector`.
+    /// cross-references a styled element matching `selector`. Uses the
+    /// built-in single-line text floor (behavior-preserving); to assert
+    /// WRAPPED text heights deterministically, use [`Probe::layout_with`]
+    /// with a [`crate::layout::MockTextMeasure`].
     #[must_use]
     pub fn layout(&self, selector: &str) -> LayoutAssert {
         let (doc, styled) = self.resolve();
@@ -204,6 +207,26 @@ impl Probe {
         let layout = engine.compute(&styled, self.viewport);
         let sel = CompoundSelector::parse(selector);
         // node_index → matches-selector, built from the styled+dom trees.
+        let matching = matching_node_indices(&doc, &styled, &sel);
+        let mut boxes = Vec::new();
+        collect_matching_boxes(&layout.root, &matching, &mut boxes);
+        LayoutAssert {
+            selector: selector.to_string(),
+            boxes,
+        }
+    }
+
+    /// Like [`Probe::layout`] but measures text via the supplied
+    /// [`TextMeasure`] — runs [`LayoutEngine::compute_with_measure`]. With a
+    /// [`crate::layout::MockTextMeasure`] the wrapped line-count math is
+    /// deterministic, so a matrix row can assert a `#text` box's
+    /// multi-line height exactly.
+    #[must_use]
+    pub fn layout_with(&self, measure: &dyn TextMeasure, selector: &str) -> LayoutAssert {
+        let (doc, styled) = self.resolve();
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute_with_measure(&styled, self.viewport, measure);
+        let sel = CompoundSelector::parse(selector);
         let matching = matching_node_indices(&doc, &styled, &sel);
         let mut boxes = Vec::new();
         collect_matching_boxes(&layout.root, &matching, &mut boxes);

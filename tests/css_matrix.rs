@@ -20,6 +20,7 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use nami_core::css::{Color, Display, Length, LengthProp};
+use nami_core::layout::MockTextMeasure;
 use nami_core::testkit::Probe;
 
 /// One verification row: a named CSS-feature variant + a closure that
@@ -431,6 +432,53 @@ const MATRIX: &[Row] = &[
                 .length(LengthProp::MarginRight, Length::Auto);
         },
     },
+    // ── Text measurement + wrapping (the TextMeasure seam) ──────────
+    Row {
+        name: "text: short word → parent auto-sizes to ONE line height",
+        check: || {
+            // "hi" = 2 chars × 0.5em × 16px = 16px < 300px width → 1 line.
+            // The div auto-sizes to 1 × 1.4 × 16 = 22.4px (the wrapped text
+            // height), proving a short run is exactly one line tall.
+            let measure = MockTextMeasure::default();
+            Probe::html("<div style=\"width:300px\">hi</div>")
+                .layout_with(&measure, "div")
+                .height(22.4);
+        },
+    },
+    Row {
+        name: "text: long text in a narrow column → wraps to N lines",
+        check: || {
+            // 40 chars × 0.5em × 16px = 320px of text in a 100px-wide div →
+            // ceil(320/100) = 4 lines → the div auto-sizes to 4 × 1.4 × 16 =
+            // 89.6px. The deterministic MockTextMeasure makes the line-count
+            // math exact — this is the multi-line-height proof.
+            let measure = MockTextMeasure::default();
+            let text: String = std::iter::repeat('x').take(40).collect();
+            let html = format!("<div style=\"width:100px\">{text}</div>");
+            Probe::html(&html)
+                .layout_with(&measure, "div")
+                .height(89.6);
+        },
+    },
+    Row {
+        name: "text: parent block auto-sizes to contain wrapped text",
+        check: || {
+            // The wrapped paragraph (4 lines, 89.6px) PUSHES a following
+            // sized box down: the marker div's top y = body margin (8) +
+            // wrapped paragraph height (89.6) = 97.6, far below where a
+            // single-line floor (22.4 → y≈30.4) would place it. This is the
+            // no-overlap proof at the typed-layout layer.
+            let measure = MockTextMeasure::default();
+            let text: String = std::iter::repeat('x').take(40).collect();
+            let html = format!(
+                "<body><div style=\"width:100px\">{text}</div>\
+                 <div id=\"marker\" style=\"width:50px;height:20px\"></div></body>"
+            );
+            Probe::html(&html)
+                .layout_with(&measure, "#marker")
+                .pos(8.0, 8.0 + 89.6);
+        },
+    },
     Row {
         name: "centering: width:200 margin:0 auto in 1280 viewport → x≈540",
         check: || {
@@ -454,7 +502,7 @@ const MATRIX: &[Row] = &[
 /// The minimum row count the matrix must carry. A new CSS-feature variant
 /// landing without a matrix row drops below this and fails CI — the
 /// forcing function. Bump this when adding rows.
-const MIN_ROWS: usize = 43;
+const MIN_ROWS: usize = 46;
 
 #[test]
 fn every_variant_in_the_matrix_works() {

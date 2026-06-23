@@ -5,4 +5,7 @@
 
 pub mod engine;
 
-pub use engine::{LayoutBox, LayoutEngine, LayoutTree, Size};
+pub use engine::{
+    LayoutBox, LayoutEngine, LayoutTree, MockTextMeasure, NodeContext, SingleLineMeasure, Size,
+    TextMeasure,
+};

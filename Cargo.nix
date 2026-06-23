@@ -8273,7 +8273,7 @@ rec {
       };
       "nami-core" = rec {
         crateName = "nami-core";
-        version = "0.1.8";
+        version = "0.1.9";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./.; };
         libName = "nami_core";

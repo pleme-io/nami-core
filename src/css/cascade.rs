@@ -6,7 +6,6 @@ use lightningcss::printer::PrinterOptions;
 use lightningcss::properties::Property;
 use lightningcss::rules::CssRule;
 use lightningcss::stylesheet::{ParserOptions, StyleSheet as LcssStyleSheet};
-use lightningcss::traits::ToCss;
 use lightningcss::values::color::CssColor;
 use tracing::debug;
 
@@ -103,6 +102,17 @@ fn extract_property(prop: &Property<'_>) -> (String, String) {
     match prop {
         Property::Color(c) => ("color".to_string(), format_css_color(c)),
         Property::BackgroundColor(c) => ("background-color".to_string(), format_css_color(c)),
+        // `background:` shorthand — extract the (final layer's) color so the
+        // paint layer's "background-color" lookup finds it. Full shorthand
+        // expansion (image/position/repeat/...) is M1 cascade work; the color
+        // is the load-bearing part for rendering block backgrounds, and real
+        // pages overwhelmingly use the shorthand. (Phase 3 shorthand expansion.)
+        Property::Background(layers) => (
+            "background-color".to_string(),
+            layers
+                .last()
+                .map_or_else(String::new, |layer| format_css_color(&layer.color)),
+        ),
         Property::Display(d) => ("display".to_string(), format!("{d:?}").to_lowercase()),
         Property::Width(_) => ("width".to_string(), css_value(prop)),
         Property::Height(_) => ("height".to_string(), css_value(prop)),
@@ -135,6 +145,35 @@ fn extract_property(prop: &Property<'_>) -> (String, String) {
 fn css_value(prop: &Property<'_>) -> String {
     prop.value_to_css_string(PrinterOptions::default())
         .unwrap_or_else(|_| format!("{prop:?}"))
+}
+
+/// CSS-standard inherited properties (the text-relevant subset). Seeded from
+/// the parent's computed style before an element's own rules apply, so a child
+/// without its own `color`/`font-*` shows the parent's. Non-inherited
+/// properties (display, width, height, background-color, margin/padding) are
+/// deliberately absent. (Phase 3 cascade: property inheritance.)
+const INHERITED_PROPERTIES: &[&str] = &[
+    "color",
+    "font-size",
+    "font-family",
+    "font-weight",
+    "font-style",
+    "line-height",
+    "text-align",
+    "letter-spacing",
+    "white-space",
+    "visibility",
+];
+
+/// Parse an inline `style="..."` attribute's declarations by reusing the
+/// stylesheet parser (wrap the block in a universal rule). Inline styles are
+/// the highest-priority author origin; supporting them lets real pages that
+/// style via the `style` attribute render. (Phase 5: inline-style parsing.)
+fn parse_inline_style(style_attr: &str) -> Vec<Declaration> {
+    StyleSheet::parse(&format!("*{{{style_attr}}}"))
+        .ok()
+        .and_then(|sheet| sheet.rules.into_iter().next())
+        .map_or_else(Vec::new, |rule| rule.declarations)
 }
 
 /// Format a CSS color value to a readable string.
@@ -229,12 +268,28 @@ impl StyleResolver {
     /// yet fully implemented.
     #[must_use]
     pub fn resolve(&self, document: &Document) -> StyledTree {
-        let root = self.resolve_node(&document.root, 0);
+        let root = self.resolve_node(&document.root, 0, None);
         StyledTree { root }
     }
 
-    fn resolve_node(&self, node: &Node, index: usize) -> StyledNode {
+    fn resolve_node(
+        &self,
+        node: &Node,
+        index: usize,
+        parent_style: Option<&ComputedStyle>,
+    ) -> StyledNode {
         let mut style = ComputedStyle::default();
+        // Inheritance: seed the CSS-standard inherited properties from the
+        // parent BEFORE this element's own rules, so a child without its own
+        // `color`/`font-*` shows the parent's. Own rules + inline style below
+        // override. (Phase 3 cascade: property inheritance.)
+        if let Some(parent) = parent_style {
+            for &prop in INHERITED_PROPERTIES {
+                if let Some(value) = parent.get(prop) {
+                    style.set(prop, value.to_string());
+                }
+            }
+        }
         let tag;
 
         match &node.data {
@@ -254,6 +309,13 @@ impl StyleResolver {
                         }
                     }
                 }
+                // Inline `style=""` attribute — highest-priority author origin,
+                // applied last so it wins over sheet rules + inheritance.
+                if let Some(inline) = el.get_attribute("style") {
+                    for decl in parse_inline_style(inline) {
+                        style.set(decl.property, decl.value);
+                    }
+                }
             }
             NodeData::Text(_) => {
                 tag = "#text".to_string();
@@ -271,7 +333,7 @@ impl StyleResolver {
             .children
             .iter()
             .map(|child| {
-                let styled = self.resolve_node(child, child_index);
+                let styled = self.resolve_node(child, child_index, Some(&style));
                 child_index += count_descendants(child);
                 styled
             })
@@ -420,5 +482,63 @@ mod tests {
         let div = find_tag(&styled.root, "div");
         assert!(div.is_some());
         assert_eq!(div.unwrap().style.display(), "block");
+    }
+
+    /// Recursive depth-first tag lookup for the M1 cascade tests.
+    fn find_styled<'a>(node: &'a StyledNode, tag: &str) -> Option<&'a StyledNode> {
+        if node.tag == tag {
+            return Some(node);
+        }
+        node.children.iter().find_map(|c| find_styled(c, tag))
+    }
+
+    #[test]
+    fn inline_style_attribute_applies() {
+        // Phase 5: inline style="" parsing — the value must land in the
+        // element's computed style (highest-priority author origin).
+        let doc = Document::parse("<div style=\"color: #ff0000\">x</div>");
+        let resolver = StyleResolver::new();
+        let styled = resolver.resolve(&doc);
+        let div = find_styled(&styled.root, "div").expect("div");
+        assert_eq!(div.style.get("color"), Some("#ff0000"));
+    }
+
+    #[test]
+    fn background_shorthand_becomes_background_color() {
+        // Phase 3: the `background:` shorthand's color is extracted under the
+        // "background-color" key the paint layer reads.
+        let sheet = StyleSheet::parse("div { background: #112233; }").unwrap();
+        let decls = &sheet.rules[0].declarations;
+        assert!(
+            decls
+                .iter()
+                .any(|d| d.property == "background-color" && d.value == "#112233"),
+            "background shorthand should yield background-color=#112233, got {decls:?}"
+        );
+    }
+
+    #[test]
+    fn color_inherits_to_descendant() {
+        // Phase 3: a child without its own `color` inherits the parent's.
+        let doc = Document::parse("<div><span>x</span></div>");
+        let sheet = StyleSheet::parse("div { color: #00ff00; }").unwrap();
+        let mut resolver = StyleResolver::new();
+        resolver.add_sheet(sheet);
+        let styled = resolver.resolve(&doc);
+        let span = find_styled(&styled.root, "span").expect("span");
+        assert_eq!(span.style.get("color"), Some("#00ff00"));
+    }
+
+    #[test]
+    fn non_inherited_property_does_not_leak_to_child() {
+        // background-color is NOT inherited — a child must not pick up the
+        // parent's background.
+        let doc = Document::parse("<div><span>x</span></div>");
+        let sheet = StyleSheet::parse("div { background-color: #123456; }").unwrap();
+        let mut resolver = StyleResolver::new();
+        resolver.add_sheet(sheet);
+        let styled = resolver.resolve(&doc);
+        let span = find_styled(&styled.root, "span").expect("span");
+        assert_eq!(span.style.get("background-color"), None);
     }
 }

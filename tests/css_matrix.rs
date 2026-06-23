@@ -345,12 +345,116 @@ const MATRIX: &[Row] = &[
             .text_with_color("Hello", Color::rgb8(255, 255, 255));
         },
     },
+    // ── UA default stylesheet (FIX 3) ───────────────────────────────
+    Row {
+        name: "UA: div defaults to display:block",
+        check: || {
+            // No author rule — the UA sheet alone gives a bare <div> block.
+            Probe::html("<div>x</div>").style("div").display(Display::Block);
+        },
+    },
+    Row {
+        name: "UA: <style> defaults to display:none",
+        check: || {
+            // The UA sheet hides <style> so its raw CSS never paints.
+            Probe::html("<style>body{color:red}</style><div>x</div>")
+                .style("style")
+                .display(Display::None);
+        },
+    },
+    Row {
+        name: "UA: h1 font-size 2em resolves to 32px (layout context)",
+        check: || {
+            // UA `h1{font-size:2em}`. A `height:1em` on the h1 resolves
+            // against the node's own font-size: 1em × (2em×16px) = 32px —
+            // proving the UA font-size landed AND resolves through layout.
+            Probe::html("<h1 style=\"height:1em\">title</h1>")
+                .layout("h1")
+                .height(32.0);
+        },
+    },
+    Row {
+        name: "UA: author rule overrides UA default (priority)",
+        check: || {
+            // Author `div{display:inline}` must beat UA `div{display:block}`
+            // because the UA sheet is the lowest-priority origin.
+            Probe::html("<style>div{display:inline}</style><div>x</div>")
+                .style("div")
+                .display(Display::Inline);
+        },
+    },
+    // ── margin / padding shorthand expansion (FIX 2) ─────────────────
+    Row {
+        name: "shorthand: margin:8px → 4 equal longhands",
+        check: || {
+            // One value applies to all four sides (the body UA shape).
+            Probe::html("<div style=\"margin:8px\">x</div>")
+                .style("div")
+                .length(LengthProp::MarginTop, Length::Px(8.0))
+                .length(LengthProp::MarginRight, Length::Px(8.0))
+                .length(LengthProp::MarginBottom, Length::Px(8.0))
+                .length(LengthProp::MarginLeft, Length::Px(8.0));
+        },
+    },
+    Row {
+        name: "shorthand: margin:1em 0 → top/bottom 1em, left/right 0",
+        check: || {
+            // Two-value form: vertical / horizontal (the p/ul UA shape).
+            Probe::html("<div style=\"margin:1em 0\">x</div>")
+                .style("div")
+                .length(LengthProp::MarginTop, Length::Em(1.0))
+                .length(LengthProp::MarginBottom, Length::Em(1.0))
+                .length(LengthProp::MarginLeft, Length::Px(0.0))
+                .length(LengthProp::MarginRight, Length::Px(0.0));
+        },
+    },
+    Row {
+        name: "shorthand: padding:4px 8px → 4 longhands",
+        check: || {
+            Probe::html("<div style=\"padding:4px 8px\">x</div>")
+                .style("div")
+                .length(LengthProp::PaddingTop, Length::Px(4.0))
+                .length(LengthProp::PaddingRight, Length::Px(8.0))
+                .length(LengthProp::PaddingBottom, Length::Px(4.0))
+                .length(LengthProp::PaddingLeft, Length::Px(8.0));
+        },
+    },
+    // ── margin:auto centering (FIX 1) ───────────────────────────────
+    Row {
+        name: "margin:0 auto stores Length::Auto on left+right",
+        check: || {
+            // The `auto` keyword survives shorthand expansion as the typed
+            // Length::Auto on left+right (what the layout engine centers on).
+            Probe::html("<div style=\"width:200px;height:50px;margin:0 auto\"></div>")
+                .style("div")
+                .length(LengthProp::MarginLeft, Length::Auto)
+                .length(LengthProp::MarginRight, Length::Auto);
+        },
+    },
+    Row {
+        name: "centering: width:200 margin:0 auto in 1280 viewport → x≈540",
+        check: || {
+            // taffy distributes the free space evenly to the two auto margins:
+            // (1280 - 200) / 2 = 540. The block is horizontally centered.
+            // y = 8 because html5ever wraps the bare <div> in <body>, which
+            // carries the UA `body{margin:8px}` (FIX 3) — so the centered
+            // block sits 8px down. x≈540 is the centering proof.
+            Probe::html(
+                "<div style=\"width:200px;height:50px;margin:0 auto;\
+                 background-color:#ff0000\"></div>",
+            )
+            .viewport(1280.0, 800.0)
+            .layout("div")
+            .width(200.0)
+            .pos(540.0, 8.0);
+        },
+    },
 ];
 
 /// The minimum row count the matrix must carry. A new CSS-feature variant
 /// landing without a matrix row drops below this and fails CI — the
 /// forcing function. Bump this when adding rows.
-const MIN_ROWS: usize = 34;
+const MIN_ROWS: usize = 43;
 
 #[test]
 fn every_variant_in_the_matrix_works() {

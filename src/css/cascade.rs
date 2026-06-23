@@ -1,6 +1,7 @@
 //! CSS cascade and style resolution.
 
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use lightningcss::printer::PrinterOptions;
 use lightningcss::properties::Property;
@@ -81,11 +82,18 @@ impl StyleSheet {
                 let mut declarations = Vec::new();
 
                 for (property, _importance) in style_rule.declarations.iter() {
-                    let (name, value) = extract_property(property);
-                    declarations.push(Declaration {
-                        property: name,
-                        value,
-                    });
+                    // A property may expand into MULTIPLE longhand
+                    // declarations (margin / padding shorthands). Each
+                    // (name, value) pair lands as its own typed declaration
+                    // so the cascade's per-longhand `set()` path is the ONE
+                    // mechanism — there is no shorthand-only code path the
+                    // longhand consumers would miss.
+                    for (name, value) in extract_property(property) {
+                        declarations.push(Declaration {
+                            property: name,
+                            value,
+                        });
+                    }
                 }
 
                 rules.push(StyleRule {
@@ -101,36 +109,41 @@ impl StyleSheet {
     }
 }
 
-/// Extract a property name and value string from a lightningcss `Property`.
-fn extract_property(prop: &Property<'_>) -> (String, String) {
-    // Use Debug formatting as a portable way to get the property info.
-    // A full implementation would match each property variant.
-    let debug_str = format!("{prop:?}");
-
-    // Try to extract a cleaner name from known variants.
-    //
-    // Length/dimension/font values use lightningcss's own canonical
-    // serializer (`value_to_css_string`) — NOT `format!("{:?}")`. The
-    // Debug form emits `"LengthPercentage(Dimension(Px(200.0)))"`, which
-    // neither the layout engine's `parse_px_value` nor the paint layer's
-    // parsers can read; the canonical form is `"200px"`, which both
-    // consume. This keeps the cascade's emitted value contract aligned
-    // with every downstream reader (load-bearing fix, not a per-consumer
-    // workaround).
+/// Extract one or more longhand `(property, value)` declarations from a
+/// lightningcss `Property`.
+///
+/// Most properties yield exactly one pair; a **shorthand** yields several
+/// (the `margin`/`padding` shorthands expand to four per-side longhands;
+/// `background` yields its color). Returning a `Vec` makes shorthand
+/// expansion the cascade's ONE mechanism — every consumer sees only
+/// longhands, so there is no shorthand-only path a longhand reader misses.
+///
+/// Length/dimension/font values use lightningcss's own canonical
+/// serializer (`value_to_css_string` / per-side `ToCss`) — NOT
+/// `format!("{:?}")`. The Debug form emits
+/// `"LengthPercentage(Dimension(Px(200.0)))"`, which neither the layout
+/// engine nor the paint layer can read; the canonical form is `"200px"` /
+/// `"8px"` / `"auto"`, which both consume. This keeps the cascade's emitted
+/// value contract aligned with every downstream reader (load-bearing fix,
+/// not a per-consumer workaround). (TYPED EMISSION: each side is serialized
+/// through the typed `ToCss` AST surface, never string-concatenated.)
+fn extract_property(prop: &Property<'_>) -> Vec<(String, String)> {
     match prop {
-        Property::Color(c) => ("color".to_string(), format_css_color(c)),
-        Property::BackgroundColor(c) => ("background-color".to_string(), format_css_color(c)),
+        Property::Color(c) => vec![("color".to_string(), format_css_color(c))],
+        Property::BackgroundColor(c) => {
+            vec![("background-color".to_string(), format_css_color(c))]
+        }
         // `background:` shorthand — extract the (final layer's) color so the
         // paint layer's "background-color" lookup finds it. Full shorthand
         // expansion (image/position/repeat/...) is M1 cascade work; the color
         // is the load-bearing part for rendering block backgrounds, and real
         // pages overwhelmingly use the shorthand. (Phase 3 shorthand expansion.)
-        Property::Background(layers) => (
+        Property::Background(layers) => vec![(
             "background-color".to_string(),
             layers
                 .last()
                 .map_or_else(String::new, |layer| format_css_color(&layer.color)),
-        ),
+        )],
         // `display` value via lightningcss's canonical serializer — NOT
         // `format!("{d:?}")`, whose Debug form is
         // `"pair(displaypair { outside: block, inside: flow, ... })"`,
@@ -139,29 +152,60 @@ fn extract_property(prop: &Property<'_>) -> (String, String) {
         // `"block"` / `"flex"` / `"none"` / `"inline"`, which `Display::parse`
         // consumes directly. (Load-bearing fix surfaced by the testkit CSS
         // matrix — the display-mode rows were all resolving to inline.)
-        Property::Display(_) => ("display".to_string(), css_value(prop)),
-        Property::Width(_) => ("width".to_string(), css_value(prop)),
-        Property::Height(_) => ("height".to_string(), css_value(prop)),
-        Property::MarginTop(_) => ("margin-top".to_string(), css_value(prop)),
-        Property::MarginBottom(_) => ("margin-bottom".to_string(), css_value(prop)),
-        Property::MarginLeft(_) => ("margin-left".to_string(), css_value(prop)),
-        Property::MarginRight(_) => ("margin-right".to_string(), css_value(prop)),
-        Property::PaddingTop(_) => ("padding-top".to_string(), css_value(prop)),
-        Property::PaddingBottom(_) => ("padding-bottom".to_string(), css_value(prop)),
-        Property::PaddingLeft(_) => ("padding-left".to_string(), css_value(prop)),
-        Property::PaddingRight(_) => ("padding-right".to_string(), css_value(prop)),
-        Property::FontSize(_) => ("font-size".to_string(), css_value(prop)),
-        Property::FontFamily(_) => ("font-family".to_string(), css_value(prop)),
+        Property::Display(_) => vec![("display".to_string(), css_value(prop))],
+        Property::Width(_) => vec![("width".to_string(), css_value(prop))],
+        Property::Height(_) => vec![("height".to_string(), css_value(prop))],
+        Property::MarginTop(_) => vec![("margin-top".to_string(), css_value(prop))],
+        Property::MarginBottom(_) => vec![("margin-bottom".to_string(), css_value(prop))],
+        Property::MarginLeft(_) => vec![("margin-left".to_string(), css_value(prop))],
+        Property::MarginRight(_) => vec![("margin-right".to_string(), css_value(prop))],
+        Property::PaddingTop(_) => vec![("padding-top".to_string(), css_value(prop))],
+        Property::PaddingBottom(_) => vec![("padding-bottom".to_string(), css_value(prop))],
+        Property::PaddingLeft(_) => vec![("padding-left".to_string(), css_value(prop))],
+        Property::PaddingRight(_) => vec![("padding-right".to_string(), css_value(prop))],
+        // `margin:` shorthand → four per-side longhands. Each side is a
+        // typed `LengthPercentageOrAuto` serialized via its own `ToCss`, so
+        // every 1/2/3/4-value form AND the `auto` keyword (`margin:0 auto`)
+        // expand correctly — `0`/`8px`/`1em`/`auto` round-trip into the
+        // per-longhand `set_len` path that already understands `auto`.
+        Property::Margin(m) => vec![
+            ("margin-top".to_string(), side_css(&m.top)),
+            ("margin-right".to_string(), side_css(&m.right)),
+            ("margin-bottom".to_string(), side_css(&m.bottom)),
+            ("margin-left".to_string(), side_css(&m.left)),
+        ],
+        // `padding:` shorthand → four per-side longhands, same mechanism.
+        Property::Padding(p) => vec![
+            ("padding-top".to_string(), side_css(&p.top)),
+            ("padding-right".to_string(), side_css(&p.right)),
+            ("padding-bottom".to_string(), side_css(&p.bottom)),
+            ("padding-left".to_string(), side_css(&p.left)),
+        ],
+        Property::FontSize(_) => vec![("font-size".to_string(), css_value(prop))],
+        Property::FontFamily(_) => vec![("font-family".to_string(), css_value(prop))],
         _ => {
-            // Fallback: derive name from debug output.
+            // Fallback: derive name from debug output. Used only for
+            // properties without a typed field (they round-trip through
+            // `ComputedStyle::other` unchanged).
+            let debug_str = format!("{prop:?}");
             let name = debug_str
                 .split('(')
                 .next()
                 .unwrap_or("unknown")
                 .to_lowercase();
-            (name, debug_str)
+            vec![(name, debug_str)]
         }
     }
+}
+
+/// Serialize one shorthand side value (a typed `LengthPercentageOrAuto`)
+/// to its canonical CSS string via lightningcss's own `ToCss` — `"8px"`,
+/// `"1em"`, `"0"`, `"auto"`. This is the per-side counterpart of
+/// [`css_value`]: a typed AST node rendered through its serializer, never a
+/// `format!("{:?}")` Debug form the length/auto parsers can't read.
+fn side_css<T: ToCss>(side: &T) -> String {
+    side.to_css_string(PrinterOptions::default())
+        .unwrap_or_default()
 }
 
 /// Serialize a property's *value* to its canonical CSS string via
@@ -504,6 +548,52 @@ fn length_to_css(l: Length) -> Option<String> {
     Some(s)
 }
 
+/// The user-agent (UA) default stylesheet — the browser's built-in CSS,
+/// authored as **real CSS** (TYPED EMISSION: one authored sheet the same
+/// parser reads, never a hand-rolled per-tag `match` in Rust). It carries
+/// the lowest-priority origin: the cascade applies it BEFORE author sheets
+/// and inline styles, so any author rule overrides it.
+///
+/// This subsumes the old hand-rolled `is_block_element` /
+/// `is_non_rendered_element` Rust predicates into ONE mechanism — the same
+/// cascade that applies author CSS. The display rules below reproduce those
+/// predicates exactly (every block tag → `display:block`; every
+/// non-rendered tag → `display:none`), plus the standard UA box defaults
+/// (body margin, heading sizes/weights/margins, list indentation, bold/
+/// italic, link color). Relies on FIX 2 (margin/padding shorthand
+/// expansion) + the typed `em` length resolution + typed selector matching.
+const UA_CSS: &str = "\
+div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre, section, \
+article, header, footer, nav, main, form, table, figure, figcaption, \
+details, summary { display: block; }\n\
+head, style, script, title, meta, link, base, noscript, template { display: none; }\n\
+body { margin: 8px; }\n\
+h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }\n\
+h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; }\n\
+h3 { font-size: 1.17em; font-weight: bold; margin: 1em 0; }\n\
+h4 { font-size: 1em; font-weight: bold; margin: 1.33em 0; }\n\
+h5 { font-size: 0.83em; font-weight: bold; margin: 1.67em 0; }\n\
+h6 { font-size: 0.67em; font-weight: bold; margin: 2.33em 0; }\n\
+p { margin: 1em 0; }\n\
+ul, ol { margin: 1em 0; padding-left: 40px; }\n\
+b, strong { font-weight: bold; }\n\
+i, em { font-style: italic; }\n\
+a { color: #0000ee; }\n";
+
+/// Parse the [`UA_CSS`] default stylesheet exactly ONCE, caching the result.
+/// Every `resolve` reuses the same parsed sheet — no re-parse per document.
+///
+/// # Panics
+/// Never in practice: [`UA_CSS`] is a fixed, valid CSS literal. If it ever
+/// failed to parse, that is a build-time authoring bug (a typed test below
+/// asserts it parses), so an empty sheet is returned rather than panicking
+/// at runtime — the UA defaults would simply be absent, a visible gap, not
+/// a crash.
+fn ua_sheet() -> &'static StyleSheet {
+    static UA_SHEET: OnceLock<StyleSheet> = OnceLock::new();
+    UA_SHEET.get_or_init(|| StyleSheet::parse(UA_CSS).unwrap_or(StyleSheet { rules: Vec::new() }))
+}
+
 /// A node in the styled tree, pairing a reference to a DOM node with its computed style.
 #[derive(Debug, Clone)]
 pub struct StyledNode {
@@ -578,18 +668,26 @@ impl StyleResolver {
         match &node.data {
             NodeData::Element(el) => {
                 tag = el.tag.clone();
-                // UA display defaults — typed. Non-rendered elements
-                // (head/style/script/title/meta/...) are Display::None so
-                // their text content never paints (otherwise raw CSS/JS
-                // source leaks into the page); block elements default to
-                // Display::Block; everything else stays Display::Inline.
-                if is_non_rendered_element(&el.tag) {
-                    style.display = Display::None;
-                } else if is_block_element(&el.tag) {
-                    style.display = Display::Block;
+                // Origin order (lowest → highest priority), all through the
+                // ONE `set()` cascade mechanism:
+                //   1. inherited-seed (already applied above)
+                //   2. UA default stylesheet  (display:block / display:none /
+                //      body+heading+list margins / link color / bold/italic)
+                //   3. author sheets
+                //   4. inline style=""
+                // The UA sheet is applied FIRST among the rules so any author
+                // rule overrides it (e.g. author `div{display:inline}` beats
+                // UA `div{display:block}`). This subsumes the old hand-rolled
+                // `is_block_element` / `is_non_rendered_element` predicates —
+                // one mechanism, authored as real CSS in `UA_CSS`.
+                for rule in &ua_sheet().rules {
+                    if rule.compounds.iter().any(|c| c.matches(el)) {
+                        for decl in &rule.declarations {
+                            style.set(decl.property.clone(), decl.value.clone());
+                        }
+                    }
                 }
-                // Match rules against this element via typed compound
-                // selectors — an element matches a rule when it satisfies
+                // Author sheets — an element matches a rule when it satisfies
                 // ANY of the rule's rightmost compounds.
                 for sheet in &self.sheets {
                     for rule in &sheet.rules {
@@ -643,47 +741,6 @@ impl Default for StyleResolver {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Check whether a tag is a block-level element by default.
-fn is_block_element(tag: &str) -> bool {
-    matches!(
-        tag,
-        "div"
-            | "p"
-            | "h1"
-            | "h2"
-            | "h3"
-            | "h4"
-            | "h5"
-            | "h6"
-            | "ul"
-            | "ol"
-            | "li"
-            | "blockquote"
-            | "pre"
-            | "section"
-            | "article"
-            | "header"
-            | "footer"
-            | "nav"
-            | "main"
-            | "form"
-            | "table"
-            | "figure"
-            | "figcaption"
-            | "details"
-            | "summary"
-    )
-}
-
-/// Elements whose content is never rendered — UA `display: none`. Their text
-/// (raw CSS, JS source, document metadata) must not paint into the page.
-fn is_non_rendered_element(tag: &str) -> bool {
-    matches!(
-        tag,
-        "head" | "style" | "script" | "title" | "meta" | "link" | "base" | "noscript" | "template"
-    )
 }
 
 /// Count total descendants of a node (including the node itself).
@@ -810,6 +867,165 @@ mod tests {
                 .any(|d| d.property == "background-color" && d.value == "#112233"),
             "background shorthand should yield background-color=#112233, got {decls:?}"
         );
+    }
+
+    // ── FIX 2: margin / padding shorthand expansion ──────────────────
+
+    /// Helper: collect a rule's declarations as a (property, value) vec.
+    fn decls_of(css: &str) -> Vec<(String, String)> {
+        StyleSheet::parse(css).unwrap().rules[0]
+            .declarations
+            .iter()
+            .map(|d| (d.property.clone(), d.value.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn margin_shorthand_one_value_expands_to_four_equal_longhands() {
+        // `margin:8px` → four equal per-side longhands (the body UA default
+        // shape). Proves the shorthand is no longer a single opaque decl.
+        let decls = decls_of("div { margin: 8px; }");
+        assert_eq!(
+            decls,
+            vec![
+                ("margin-top".to_string(), "8px".to_string()),
+                ("margin-right".to_string(), "8px".to_string()),
+                ("margin-bottom".to_string(), "8px".to_string()),
+                ("margin-left".to_string(), "8px".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn margin_shorthand_two_value_splits_vertical_horizontal() {
+        // `margin:1em 0` → top/bottom=1em, left/right=0 (the `p`/`ul` UA shape).
+        let decls = decls_of("div { margin: 1em 0; }");
+        assert_eq!(
+            decls,
+            vec![
+                ("margin-top".to_string(), "1em".to_string()),
+                ("margin-right".to_string(), "0".to_string()),
+                ("margin-bottom".to_string(), "1em".to_string()),
+                ("margin-left".to_string(), "0".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn margin_shorthand_auto_keyword_expands_per_side() {
+        // `margin:0 auto` → left+right=auto (the centering shape). The `auto`
+        // keyword survives expansion so the layout engine can center.
+        let decls = decls_of("div { margin: 0 auto; }");
+        assert_eq!(
+            decls,
+            vec![
+                ("margin-top".to_string(), "0".to_string()),
+                ("margin-right".to_string(), "auto".to_string()),
+                ("margin-bottom".to_string(), "0".to_string()),
+                ("margin-left".to_string(), "auto".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn padding_shorthand_expands_to_four_longhands() {
+        let decls = decls_of("div { padding: 4px 8px; }");
+        assert_eq!(
+            decls,
+            vec![
+                ("padding-top".to_string(), "4px".to_string()),
+                ("padding-right".to_string(), "8px".to_string()),
+                ("padding-bottom".to_string(), "4px".to_string()),
+                ("padding-left".to_string(), "8px".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn margin_zero_auto_lands_as_typed_auto_on_left_and_right() {
+        // End-to-end through the cascade: `margin:0 auto` resolves to the
+        // typed `Length::Auto` on the left+right margin fields (what the
+        // layout engine reads to center).
+        let doc = Document::parse("<div style=\"margin:0 auto\">x</div>");
+        let resolver = StyleResolver::new();
+        let styled = resolver.resolve(&doc);
+        let div = find_styled(&styled.root, "div").expect("div");
+        assert_eq!(div.style.length(LengthProp::MarginLeft), Length::Auto);
+        assert_eq!(div.style.length(LengthProp::MarginRight), Length::Auto);
+        assert_eq!(div.style.length(LengthProp::MarginTop), Length::Px(0.0));
+        assert_eq!(div.style.length(LengthProp::MarginBottom), Length::Px(0.0));
+    }
+
+    // ── FIX 3: UA default stylesheet ─────────────────────────────────
+
+    #[test]
+    fn ua_css_parses_into_a_nonempty_sheet() {
+        // The authored UA_CSS literal must parse (build-time authoring
+        // invariant — a typo would otherwise silently drop UA defaults).
+        let sheet = StyleSheet::parse(UA_CSS).expect("UA_CSS must be valid CSS");
+        assert!(!sheet.rules.is_empty());
+    }
+
+    #[test]
+    fn ua_gives_block_elements_block_display() {
+        // div is block by the UA sheet (was the old is_block_element path).
+        let doc = Document::parse("<div>x</div>");
+        let styled = StyleResolver::new().resolve(&doc);
+        let div = find_styled(&styled.root, "div").expect("div");
+        assert_eq!(div.style.display(), Display::Block);
+    }
+
+    #[test]
+    fn ua_gives_non_rendered_elements_display_none() {
+        // <style> is display:none by the UA sheet (was is_non_rendered_element).
+        let doc = Document::parse("<style>body{color:red}</style><div>x</div>");
+        let styled = StyleResolver::new().resolve(&doc);
+        let style_el = find_styled(&styled.root, "style").expect("style element");
+        assert_eq!(style_el.style.display(), Display::None);
+    }
+
+    #[test]
+    fn ua_gives_body_eight_px_margin() {
+        // body margin:8px from the UA sheet, expanded to four longhands.
+        let doc = Document::parse("<body><div>x</div></body>");
+        let styled = StyleResolver::new().resolve(&doc);
+        let body = find_styled(&styled.root, "body").expect("body");
+        assert_eq!(body.style.length(LengthProp::MarginTop), Length::Px(8.0));
+        assert_eq!(body.style.length(LengthProp::MarginLeft), Length::Px(8.0));
+    }
+
+    #[test]
+    fn ua_gives_h1_two_em_font_size() {
+        // h1 font-size:2em from the UA sheet (the typed-Length field). The
+        // UA also authors font-weight:bold; that property has no typed field
+        // yet (it round-trips through `other`), so it is asserted at the
+        // layout level (font-size → 32px) where the load-bearing render
+        // effect lives, not via the not-yet-typed weight value.
+        let doc = Document::parse("<h1>title</h1>");
+        let styled = StyleResolver::new().resolve(&doc);
+        let h1 = find_styled(&styled.root, "h1").expect("h1");
+        assert_eq!(h1.style.font_size(), Length::Em(2.0));
+    }
+
+    #[test]
+    fn ua_gives_anchor_default_link_color() {
+        let doc = Document::parse("<a href=\"#\">link</a>");
+        let styled = StyleResolver::new().resolve(&doc);
+        let a = find_styled(&styled.root, "a").expect("a");
+        assert_eq!(a.style.color(), Color::parse("#0000ee"));
+    }
+
+    #[test]
+    fn author_rule_overrides_ua_default_via_origin_priority() {
+        // An author `div{display:inline}` rule must beat the UA
+        // `div{display:block}` because UA is applied first (lowest priority).
+        let doc = Document::parse("<div>x</div>");
+        let sheet = StyleSheet::parse("div { display: inline; }").unwrap();
+        let mut resolver = StyleResolver::new();
+        resolver.add_sheet(sheet);
+        let styled = resolver.resolve(&doc);
+        let div = find_styled(&styled.root, "div").expect("div");
+        assert_eq!(div.style.display(), Display::Inline);
     }
 
     #[test]
@@ -1063,3 +1279,4 @@ mod testkit_migrated {
             .display(Display::None);
     }
 }
+

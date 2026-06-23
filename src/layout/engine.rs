@@ -206,19 +206,15 @@ impl LayoutEngine {
             style.size.height = Dimension::Length(font_size * LINE_HEIGHT_FACTOR);
         }
 
-        // Margins.
-        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginTop), ctx) {
-            style.margin.top = LengthPercentageAuto::Length(px);
-        }
-        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginBottom), ctx) {
-            style.margin.bottom = LengthPercentageAuto::Length(px);
-        }
-        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginLeft), ctx) {
-            style.margin.left = LengthPercentageAuto::Length(px);
-        }
-        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginRight), ctx) {
-            style.margin.right = LengthPercentageAuto::Length(px);
-        }
+        // Margins. A side that resolves from `Length::Auto` becomes
+        // `LengthPercentageAuto::Auto` — NOT left at the 0 default — so taffy
+        // distributes free space to it. `margin-left:auto` +
+        // `margin-right:auto` on a fixed-width block is what centers it.
+        // Every concrete length resolves through the typed context as before.
+        style.margin.top = taffy_margin(styled.style.length(LengthProp::MarginTop), ctx);
+        style.margin.bottom = taffy_margin(styled.style.length(LengthProp::MarginBottom), ctx);
+        style.margin.left = taffy_margin(styled.style.length(LengthProp::MarginLeft), ctx);
+        style.margin.right = taffy_margin(styled.style.length(LengthProp::MarginRight), ctx);
 
         // Padding.
         if let Some(px) = resolve_len(styled.style.length(LengthProp::PaddingTop), ctx) {
@@ -278,6 +274,23 @@ impl Default for LayoutEngine {
 /// returns `None` (the caller leaves the taffy slot at its default).
 fn resolve_len(len: Length, ctx: &LengthContext) -> Option<f32> {
     len.resolve(ctx)
+}
+
+/// Map a typed margin [`Length`] to a taffy [`LengthPercentageAuto`].
+///
+/// `Length::Auto` → [`LengthPercentageAuto::Auto`] (taffy distributes free
+/// space to the side — the centering mechanism); a concrete length resolves
+/// to pixels; an unresolvable (only `Auto`, already handled) falls back to a
+/// 0 length. This is the typed seam where `margin:0 auto` becomes real
+/// centering: both left+right resolve to `Auto`, so taffy splits the free
+/// space evenly.
+fn taffy_margin(len: Length, ctx: &LengthContext) -> LengthPercentageAuto {
+    match len {
+        Length::Auto => LengthPercentageAuto::Auto,
+        other => other
+            .resolve(ctx)
+            .map_or(LengthPercentageAuto::Length(0.0), LengthPercentageAuto::Length),
+    }
 }
 
 /// Resolve a width/height [`Length`]. Identical to [`resolve_len`] but

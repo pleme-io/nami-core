@@ -3,7 +3,16 @@
 use taffy::prelude::*;
 use tracing::debug;
 
-use crate::css::cascade::{StyledNode, StyledTree};
+use crate::css::cascade::{LengthProp, StyledNode, StyledTree};
+use crate::css::values::{Length, LengthContext};
+
+/// The root element's font-size (px). Basis for `rem` units; CSS default
+/// is 16px and the layout engine has no settings surface yet.
+const ROOT_FONT_SIZE: f32 = 16.0;
+
+/// Default single-line height factor applied to the font-size when a
+/// `#text` node has no explicit height (taffy has no text intrinsic size).
+const LINE_HEIGHT_FACTOR: f32 = 1.4;
 
 /// Viewport dimensions.
 #[derive(Debug, Clone, Copy)]
@@ -94,7 +103,16 @@ impl LayoutEngine {
     pub fn compute(&mut self, styled_tree: &StyledTree, viewport: Size) -> LayoutTree {
         self.tree = TaffyTree::new();
 
-        let root_node = self.build_taffy_node(&styled_tree.root);
+        // The base length-resolution context: the viewport drives vw/vh and
+        // the initial percent basis; per-node font-size (for em) is folded
+        // in as the recursion descends. rem is always the root font-size.
+        let base_ctx = LengthContext::new(
+            ROOT_FONT_SIZE,
+            ROOT_FONT_SIZE,
+            viewport.width,
+            viewport.height,
+        );
+        let root_node = self.build_taffy_node(&styled_tree.root, &base_ctx);
 
         self.tree
             .compute_layout(
@@ -118,13 +136,29 @@ impl LayoutEngine {
         LayoutTree { root, viewport }
     }
 
-    fn build_taffy_node(&mut self, styled: &StyledNode) -> NodeId {
-        let style = self.styled_to_taffy(styled);
+    fn build_taffy_node(&mut self, styled: &StyledNode, parent_ctx: &LengthContext) -> NodeId {
+        // Per-node length context: `em` resolves against THIS node's
+        // computed font-size; rem + viewport units stay constant; the
+        // percent basis is inherited (set per-axis below where it matters).
+        let font_px = styled
+            .style
+            .font_size()
+            .resolve(parent_ctx)
+            .unwrap_or(ROOT_FONT_SIZE);
+        let ctx = LengthContext {
+            font_size: font_px,
+            root_font_size: parent_ctx.root_font_size,
+            viewport_w: parent_ctx.viewport_w,
+            viewport_h: parent_ctx.viewport_h,
+            percent_basis: parent_ctx.percent_basis,
+        };
+
+        let style = self.styled_to_taffy(styled, &ctx);
 
         let child_nodes: Vec<NodeId> = styled
             .children
             .iter()
-            .map(|child| self.build_taffy_node(child))
+            .map(|child| self.build_taffy_node(child, &ctx))
             .collect();
 
         self.tree
@@ -132,97 +166,72 @@ impl LayoutEngine {
             .expect("taffy node creation should not fail")
     }
 
-    fn styled_to_taffy(&self, styled: &StyledNode) -> Style {
+    fn styled_to_taffy(&self, styled: &StyledNode, ctx: &LengthContext) -> Style {
         let mut style = Style::default();
 
-        // Map display property.
-        match styled.style.display() {
-            "block" => {
-                style.display = Display::Block;
-            }
-            "flex" => {
-                style.display = Display::Flex;
-            }
-            "none" => {
-                style.display = Display::None;
-            }
-            // "inline" and other values default to Block for layout purposes
-            // since taffy doesn't have a true inline layout mode.
-            _ => {
-                style.display = Display::Block;
-            }
+        // Map the typed display mode. Inline has no true taffy mode (taffy
+        // is flexbox/grid/block only), so it lays out as Block — preserving
+        // the prior behavior where every non-none/flex value became Block.
+        use crate::css::values::Display as CssDisplay;
+        style.display = match styled.style.display() {
+            CssDisplay::Flex => Display::Flex,
+            CssDisplay::None => Display::None,
+            // Block + Inline (and the inline-as-block fallback) → Block.
+            CssDisplay::Block | CssDisplay::Inline => Display::Block,
+        };
+
+        // Width / height — resolved via the typed length context, so vw/vh/
+        // em/rem/% now produce real pixels (Auto → no fixed dimension). For
+        // width, % resolves against the inherited percent basis (viewport at
+        // root); for height, % resolves against the viewport height.
+        if let Some(px) = resolve_dimension(styled.style.length(LengthProp::Width), ctx) {
+            style.size.width = Dimension::Length(px);
         }
 
-        // Parse width if specified.
-        if let Some(w) = styled.style.get("width") {
-            if let Some(px) = parse_px_value(w) {
-                style.size.width = Dimension::Length(px);
-            }
-        }
-
-        // Parse height if specified; otherwise a `#text` node gets a default
+        // Height if specified; otherwise a `#text` node gets a default
         // single-line height derived from its (inherited) font-size, so
         // text-bearing boxes don't collapse to zero and get skipped by the
-        // paint layer. taffy has no text intrinsic size — this is the M1.2
-        // text-measurement floor (real per-line wrapping/measurement is the
-        // fuller fix; this ensures auto-sized text RENDERS). The parent block
-        // element auto-sizes to contain the sized #text child.
-        if let Some(px) = styled.style.get("height").and_then(parse_px_value) {
+        // paint layer. taffy has no text intrinsic size — this is the
+        // text-measurement floor; the parent block auto-sizes to contain it.
+        let height_ctx = ctx.with_percent_basis(ctx.viewport_h);
+        if let Some(px) = resolve_dimension(styled.style.length(LengthProp::Height), &height_ctx) {
             style.size.height = Dimension::Length(px);
         } else if styled.tag == "#text" {
+            // The node's resolved font-size (em folds in via ctx.font_size).
             let font_size = styled
                 .style
-                .get("font-size")
-                .and_then(parse_px_value)
-                .unwrap_or(16.0);
-            // 1.4 default line-height factor (unitless line-height handling is
-            // finer M1 work; a px line-height is intentionally not parsed here
-            // to avoid mistreating a unitless multiplier as pixels).
-            style.size.height = Dimension::Length(font_size * 1.4);
+                .font_size()
+                .resolve(ctx)
+                .unwrap_or(ROOT_FONT_SIZE);
+            style.size.height = Dimension::Length(font_size * LINE_HEIGHT_FACTOR);
         }
 
-        // Parse margins.
-        if let Some(m) = styled.style.get("margin-top") {
-            if let Some(px) = parse_px_value(m) {
-                style.margin.top = LengthPercentageAuto::Length(px);
-            }
+        // Margins.
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginTop), ctx) {
+            style.margin.top = LengthPercentageAuto::Length(px);
         }
-        if let Some(m) = styled.style.get("margin-bottom") {
-            if let Some(px) = parse_px_value(m) {
-                style.margin.bottom = LengthPercentageAuto::Length(px);
-            }
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginBottom), ctx) {
+            style.margin.bottom = LengthPercentageAuto::Length(px);
         }
-        if let Some(m) = styled.style.get("margin-left") {
-            if let Some(px) = parse_px_value(m) {
-                style.margin.left = LengthPercentageAuto::Length(px);
-            }
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginLeft), ctx) {
+            style.margin.left = LengthPercentageAuto::Length(px);
         }
-        if let Some(m) = styled.style.get("margin-right") {
-            if let Some(px) = parse_px_value(m) {
-                style.margin.right = LengthPercentageAuto::Length(px);
-            }
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::MarginRight), ctx) {
+            style.margin.right = LengthPercentageAuto::Length(px);
         }
 
-        // Parse padding.
-        if let Some(p) = styled.style.get("padding-top") {
-            if let Some(px) = parse_px_value(p) {
-                style.padding.top = LengthPercentage::Length(px);
-            }
+        // Padding.
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::PaddingTop), ctx) {
+            style.padding.top = LengthPercentage::Length(px);
         }
-        if let Some(p) = styled.style.get("padding-bottom") {
-            if let Some(px) = parse_px_value(p) {
-                style.padding.bottom = LengthPercentage::Length(px);
-            }
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::PaddingBottom), ctx) {
+            style.padding.bottom = LengthPercentage::Length(px);
         }
-        if let Some(p) = styled.style.get("padding-left") {
-            if let Some(px) = parse_px_value(p) {
-                style.padding.left = LengthPercentage::Length(px);
-            }
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::PaddingLeft), ctx) {
+            style.padding.left = LengthPercentage::Length(px);
         }
-        if let Some(p) = styled.style.get("padding-right") {
-            if let Some(px) = parse_px_value(p) {
-                style.padding.right = LengthPercentage::Length(px);
-            }
+        if let Some(px) = resolve_len(styled.style.length(LengthProp::PaddingRight), ctx) {
+            style.padding.right = LengthPercentage::Length(px);
         }
 
         style
@@ -265,10 +274,16 @@ impl Default for LayoutEngine {
     }
 }
 
-/// Try to parse a pixel value from a string like `"100px"` or `"100"`.
-fn parse_px_value(value: &str) -> Option<f32> {
-    let trimmed = value.trim().trim_end_matches("px");
-    trimmed.parse::<f32>().ok()
+/// Resolve a typed [`Length`] to pixels against the context. `Auto`
+/// returns `None` (the caller leaves the taffy slot at its default).
+fn resolve_len(len: Length, ctx: &LengthContext) -> Option<f32> {
+    len.resolve(ctx)
+}
+
+/// Resolve a width/height [`Length`]. Identical to [`resolve_len`] but
+/// named for the box-dimension call sites (`Auto` → no fixed dimension).
+fn resolve_dimension(len: Length, ctx: &LengthContext) -> Option<f32> {
+    len.resolve(ctx)
 }
 
 /// Count total layout boxes in a tree.
@@ -373,11 +388,101 @@ mod tests {
     }
 
     #[test]
-    fn parse_px_values() {
-        assert_eq!(parse_px_value("100px"), Some(100.0));
-        assert_eq!(parse_px_value("50"), Some(50.0));
-        assert_eq!(parse_px_value(" 25px "), Some(25.0));
-        assert_eq!(parse_px_value("auto"), None);
+    fn resolve_len_helper() {
+        let ctx = LengthContext::new(20.0, 16.0, 1000.0, 500.0);
+        assert_eq!(resolve_len(Length::Px(100.0), &ctx), Some(100.0));
+        assert_eq!(resolve_len(Length::Em(2.0), &ctx), Some(40.0));
+        assert_eq!(resolve_len(Length::Auto, &ctx), None);
+    }
+
+    /// Build a styled node by directly setting a typed CSS declaration.
+    fn styled_with(tag: &str, prop: &str, value: &str) -> StyledTree {
+        let mut style = ComputedStyle::default();
+        style.set("display", "block");
+        style.set(prop, value);
+        StyledTree {
+            root: StyledNode {
+                node_index: 0,
+                tag: tag.to_string(),
+                style,
+                children: vec![],
+            },
+        }
+    }
+
+    #[test]
+    fn vw_width_resolves_to_half_viewport() {
+        // width:50vw on a 1280-wide viewport ≈ 640px (the units page proof).
+        let styled = styled_with("div", "width", "50vw");
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute(&styled, Size::new(1280.0, 800.0));
+        assert!(
+            (layout.root.width - 640.0).abs() < 0.5,
+            "50vw of 1280 should be ~640, got {}",
+            layout.root.width
+        );
+    }
+
+    #[test]
+    fn vh_height_resolves_to_fraction_of_viewport() {
+        let styled = styled_with("div", "height", "25vh");
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute(&styled, Size::new(1280.0, 800.0));
+        assert!(
+            (layout.root.height - 200.0).abs() < 0.5,
+            "25vh of 800 should be ~200, got {}",
+            layout.root.height
+        );
+    }
+
+    #[test]
+    fn rem_width_resolves_against_root_font() {
+        // 10rem × 16px root = 160px.
+        let styled = styled_with("div", "width", "10rem");
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute(&styled, Size::new(800.0, 600.0));
+        assert!(
+            (layout.root.width - 160.0).abs() < 0.5,
+            "10rem should be 160px, got {}",
+            layout.root.width
+        );
+    }
+
+    #[test]
+    fn em_width_resolves_against_node_font_size() {
+        // font-size:32px + width:5em → 160px (em uses THIS node's font-size).
+        let mut style = ComputedStyle::default();
+        style.set("display", "block");
+        style.set("font-size", "32px");
+        style.set("width", "5em");
+        let styled = StyledTree {
+            root: StyledNode {
+                node_index: 0,
+                tag: "div".to_string(),
+                style,
+                children: vec![],
+            },
+        };
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute(&styled, Size::new(800.0, 600.0));
+        assert!(
+            (layout.root.width - 160.0).abs() < 0.5,
+            "5em at 32px font should be 160px, got {}",
+            layout.root.width
+        );
+    }
+
+    #[test]
+    fn percent_width_resolves_against_viewport_basis() {
+        // width:50% resolves against the percent basis (viewport at root).
+        let styled = styled_with("div", "width", "50%");
+        let mut engine = LayoutEngine::new();
+        let layout = engine.compute(&styled, Size::new(1000.0, 800.0));
+        assert!(
+            (layout.root.width - 500.0).abs() < 0.5,
+            "50% of 1000 should be 500, got {}",
+            layout.root.width
+        );
     }
 
     #[test]

@@ -39,102 +39,18 @@
 //!   placeholder rect; actual image decode/fetch is a later milestone.
 
 use crate::css::cascade::{StyledNode, StyledTree};
+use crate::css::values::LengthContext;
 use crate::dom::{Document, Node};
 use crate::layout::{LayoutBox, LayoutTree};
 
-/// Linear-ish RGBA color in `[0, 1]` per channel. The consumer is
-/// responsible for any sRGB→linear conversion its GPU target needs;
-/// these values are parsed directly from the cascade's color strings.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Rgba {
-    /// Red, `[0, 1]`.
-    pub r: f32,
-    /// Green, `[0, 1]`.
-    pub g: f32,
-    /// Blue, `[0, 1]`.
-    pub b: f32,
-    /// Alpha, `[0, 1]`.
-    pub a: f32,
-}
-
-impl Rgba {
-    /// Fully transparent — `(0, 0, 0, 0)`.
-    pub const TRANSPARENT: Rgba = Rgba {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 0.0,
-    };
-
-    /// Parse the EXACT color string formats nami-core's
-    /// [`crate::css::cascade`] emits:
-    ///
-    /// - `"#rrggbb"` — opaque hex (the `format_css_color` opaque path).
-    /// - `"rgba(r, g, b, a)"` — `r`/`g`/`b` in `0..=255`, `a` in `0.0..=1.0`
-    ///   (the translucent path; `a` is emitted with two decimals like
-    ///   `"rgba(255, 0, 0, 0.50)"`).
-    /// - `"currentColor"` — passthrough; returns `None`.
-    ///
-    /// Returns `None` for `currentColor`, unrecognized, or malformed
-    /// input. `None` means **the caller skips the draw** — a visible
-    /// gap, never a silent black box.
-    #[must_use]
-    pub fn parse(s: &str) -> Option<Rgba> {
-        let s = s.trim();
-        if s.eq_ignore_ascii_case("currentColor") {
-            return None;
-        }
-        if let Some(hex) = s.strip_prefix('#') {
-            return parse_hex_rrggbb(hex);
-        }
-        if let Some(inner) = s
-            .strip_prefix("rgba(")
-            .and_then(|rest| rest.strip_suffix(')'))
-        {
-            return parse_rgba_components(inner);
-        }
-        None
-    }
-}
-
-/// Parse a six-hex-digit `rrggbb` body (no leading `#`). Anything other
-/// than exactly six hex digits returns `None`.
-fn parse_hex_rrggbb(hex: &str) -> Option<Rgba> {
-    if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return None;
-    }
-    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-    Some(Rgba {
-        r: f32::from(r) / 255.0,
-        g: f32::from(g) / 255.0,
-        b: f32::from(b) / 255.0,
-        a: 1.0,
-    })
-}
-
-/// Parse the comma-separated `r, g, b, a` body of an `rgba(...)` value:
-/// `r`/`g`/`b` are `0..=255` integers, `a` is a `0.0..=1.0` float.
-fn parse_rgba_components(inner: &str) -> Option<Rgba> {
-    let parts: Vec<&str> = inner.split(',').map(str::trim).collect();
-    if parts.len() != 4 {
-        return None;
-    }
-    let r: u16 = parts[0].parse().ok()?;
-    let g: u16 = parts[1].parse().ok()?;
-    let b: u16 = parts[2].parse().ok()?;
-    let a: f32 = parts[3].parse().ok()?;
-    if r > 255 || g > 255 || b > 255 || !(0.0..=1.0).contains(&a) {
-        return None;
-    }
-    Some(Rgba {
-        r: f32::from(r) / 255.0,
-        g: f32::from(g) / 255.0,
-        b: f32::from(b) / 255.0,
-        a,
-    })
-}
+/// The paint layer's color type is the **one** CSS color type — there is
+/// no second color in the pipeline. `Rgba` is a backward-compatible alias
+/// for [`Color`](crate::css::values::Color) (the field names `r`/`g`/`b`/`a`
+/// and `TRANSPARENT` / `parse` are identical, so existing
+/// `paint::Rgba` references keep compiling). The cascade now hands the
+/// paint layer a typed [`Color`] directly, so no re-parse happens at the
+/// paint site.
+pub use crate::css::values::Color as Rgba;
 
 /// One typed paint command. Coordinates are in the same space as the
 /// [`LayoutBox`] (viewport-relative logical pixels); the renderer offsets
@@ -219,6 +135,9 @@ const DEFAULT_FONT_SIZE: f32 = 16.0;
 /// Line-height multiple applied to the font size.
 const LINE_HEIGHT_FACTOR: f32 = 1.2;
 
+/// Root font-size (px) — basis for `rem` when resolving a box's font-size.
+const ROOT_FONT_SIZE: f32 = 16.0;
+
 /// Build a [`DisplayList`] from a computed [`LayoutTree`], its
 /// [`StyledTree`], and the source [`Document`].
 ///
@@ -235,11 +154,7 @@ const LINE_HEIGHT_FACTOR: f32 = 1.2;
 /// backgrounds are skipped (a visible gap, never a black box). See the
 /// module-level "Named gaps" for what this M0 walk does *not* yet do.
 #[must_use]
-pub fn build_display_list(
-    layout: &LayoutTree,
-    styled: &StyledTree,
-    dom: &Document,
-) -> DisplayList {
+pub fn build_display_list(layout: &LayoutTree, styled: &StyledTree, dom: &Document) -> DisplayList {
     // node_index → &StyledNode. resolve_node assigns indices in preorder
     // DFS; index_styled_nodes rebuilds that same map.
     let styled_index = index_styled_nodes(&styled.root);
@@ -247,8 +162,17 @@ pub fn build_display_list(
     // DFS that DescendantIter walks, so enumerate() reproduces the map.
     let dom_index: Vec<&Node> = dom.root.descendants().collect();
 
+    // The viewport-scoped length context for resolving a box's font-size
+    // (em/rem/% supported now that font-size is a typed Length).
+    let ctx = LengthContext::new(
+        ROOT_FONT_SIZE,
+        ROOT_FONT_SIZE,
+        layout.viewport.width,
+        layout.viewport.height,
+    );
+
     let mut list = DisplayList::default();
-    walk_box(&layout.root, &styled_index, &dom_index, &mut list);
+    walk_box(&layout.root, &styled_index, &dom_index, &ctx, &mut list);
     list
 }
 
@@ -269,7 +193,10 @@ fn collect_styled<'a>(node: &'a StyledNode, out: &mut Vec<(usize, &'a StyledNode
 }
 
 /// Look up a styled node by its `node_index`.
-fn styled_for<'a>(index: &'a [(usize, &'a StyledNode)], node_index: usize) -> Option<&'a StyledNode> {
+fn styled_for<'a>(
+    index: &'a [(usize, &'a StyledNode)],
+    node_index: usize,
+) -> Option<&'a StyledNode> {
     index
         .iter()
         .find(|(i, _)| *i == node_index)
@@ -293,6 +220,7 @@ fn walk_box(
     lbox: &LayoutBox,
     styled_index: &[(usize, &StyledNode)],
     dom_index: &[&Node],
+    ctx: &LengthContext,
     list: &mut DisplayList,
 ) {
     let zero_area = lbox.width <= 0.0 || lbox.height <= 0.0;
@@ -300,12 +228,10 @@ fn walk_box(
     let dom_node = dom_index.get(lbox.node_index).copied();
 
     // 1. Background rect (parent before children). Skip zero-area boxes
-    //    and absent/transparent backgrounds.
+    //    and absent/transparent backgrounds. The cascade hands us a typed
+    //    Color directly — no string re-parse at the paint site.
     if !zero_area {
-        if let Some(bg) = styled
-            .and_then(|s| s.style.get("background-color"))
-            .and_then(Rgba::parse)
-        {
+        if let Some(bg) = styled.and_then(|s| s.style.background_color()) {
             if bg.a > 0.0 {
                 list.push(DrawCmd::Rect {
                     x: lbox.x,
@@ -347,13 +273,24 @@ fn walk_box(
     if let Some(node) = dom_node {
         let text = direct_text(node);
         if !text.trim().is_empty() {
+            // Typed color directly from the cascade; TRANSPARENT marks
+            // "use the renderer's scheme default fg".
             let color = styled
-                .and_then(|s| s.style.get("color"))
-                .and_then(Rgba::parse)
+                .and_then(|s| s.style.color())
                 .unwrap_or(Rgba::TRANSPARENT);
+            // Resolve the typed font-size Length to px against the
+            // viewport-scoped context (em folds in the node's own size).
             let font_size = styled
-                .and_then(|s| s.style.get("font-size"))
-                .and_then(parse_font_size)
+                .map(|s| s.style.font_size())
+                .and_then(|len| {
+                    // em resolves against the node's own font-size; build a
+                    // node-local context so `2em` font-size is sane.
+                    let node_ctx = LengthContext {
+                        font_size: ctx.font_size,
+                        ..*ctx
+                    };
+                    len.resolve(&node_ctx)
+                })
                 .unwrap_or(DEFAULT_FONT_SIZE);
             list.push(DrawCmd::Text {
                 x: lbox.x,
@@ -369,17 +306,8 @@ fn walk_box(
     }
 
     for child in &lbox.children {
-        walk_box(child, styled_index, dom_index, list);
+        walk_box(child, styled_index, dom_index, ctx, list);
     }
-}
-
-/// Parse a `font-size` value to pixels. Accepts a bare number or a
-/// `"<n>px"` form; the cascade currently emits a Debug form for
-/// `font-size`, so this is best-effort — a future cascade improvement
-/// (computed `em`/`rem`/`%`) makes this exact.
-fn parse_font_size(value: &str) -> Option<f32> {
-    let trimmed = value.trim().trim_end_matches("px").trim();
-    trimmed.parse::<f32>().ok()
 }
 
 #[cfg(test)]
@@ -434,13 +362,25 @@ mod tests {
 
     #[test]
     fn parse_rejects_malformed() {
-        assert_eq!(Rgba::parse("#fff"), None); // 3-digit not emitted by cascade
-        assert_eq!(Rgba::parse("#gggggg"), None);
-        assert_eq!(Rgba::parse("red"), None);
-        assert_eq!(Rgba::parse("rgba(300, 0, 0, 1)"), None); // out of range
+        // Rgba is now the unified css::values::Color — it accepts the
+        // broader CSS surface (#fff, named colors, 3-arg rgb()), so the
+        // ONLY cases that stay None are genuinely-malformed ones.
+        assert_eq!(Rgba::parse("#gggggg"), None); // non-hex digit
+        assert_eq!(Rgba::parse("#12345"), None); // wrong digit count
+        assert_eq!(Rgba::parse("notacolor"), None); // not a named color
+        assert_eq!(Rgba::parse("rgba(300, 0, 0, 1)"), None); // channel > 255
         assert_eq!(Rgba::parse("rgba(0, 0, 0, 2)"), None); // alpha > 1
-        assert_eq!(Rgba::parse("rgba(0, 0, 0)"), None); // wrong arity
+        assert_eq!(Rgba::parse("rgb(0, 0)"), None); // wrong arity
         assert_eq!(Rgba::parse(""), None);
+    }
+
+    #[test]
+    fn unified_color_accepts_broader_surface() {
+        // The unification with css::values::Color means these now parse
+        // (they were None under the old paint-only Rgba).
+        assert!(Rgba::parse("#fff").is_some());
+        assert!(Rgba::parse("red").is_some());
+        assert!(Rgba::parse("rgb(0, 0, 0)").is_some());
     }
 
     #[test]
@@ -499,7 +439,10 @@ mod tests {
             _ => None,
         });
         let rect = rect.expect("expected a div background Rect");
-        assert!((rect.b - 1.0).abs() < 1e-6, "div background should be blue-ish: {rect:?}");
+        assert!(
+            (rect.b - 1.0).abs() < 1e-6,
+            "div background should be blue-ish: {rect:?}"
+        );
 
         // There must be a Text "Hello" in white.
         let text = dl.cmds.iter().find_map(|c| match c {
@@ -528,7 +471,10 @@ mod tests {
             .iter()
             .position(|c| matches!(c, DrawCmd::Text { .. }))
             .expect("text");
-        assert!(rect_pos < text_pos, "the div rect must paint before the p text");
+        assert!(
+            rect_pos < text_pos,
+            "the div rect must paint before the p text"
+        );
     }
 
     #[test]
@@ -551,10 +497,7 @@ mod tests {
         // currentColor → Rgba::parse None → caller uses scheme default fg,
         // which we encode as TRANSPARENT (a < 1) so the renderer knows to
         // substitute. The Text command is still emitted.
-        let dl = build(
-            "<p>Inherit</p>",
-            "p { color: currentColor }",
-        );
+        let dl = build("<p>Inherit</p>", "p { color: currentColor }");
         let color = dl.cmds.iter().find_map(|c| match c {
             DrawCmd::Text { color, .. } => Some(*color),
             _ => None,

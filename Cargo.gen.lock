@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "cargo_lock_sha256": "4e4e082979894656c44e7e7dffc4b75bc1cd82983d42ef976bd9bbff7bc1ab9d",
+  "cargo_lock_sha256": "49f2f38ad949307e2d741b1abc1a068dab39f5293d928a1b45fada4eccd66933",
   "target_resolves": {
     "base": {
       "ahash-0.8.12": {
@@ -2305,7 +2305,7 @@
           "std"
         ]
       },
-      "nami-core-0.1.4": {
+      "nami-core-0.1.5": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -6656,7 +6656,7 @@
     "memchr-2.8.2": {
       "edition": "2021"
     },
-    "nami-core-0.1.4": {
+    "nami-core-0.1.5": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",

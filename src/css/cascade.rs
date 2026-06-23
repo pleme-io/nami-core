@@ -2,9 +2,11 @@
 
 use std::collections::HashMap;
 
+use lightningcss::printer::PrinterOptions;
 use lightningcss::properties::Property;
 use lightningcss::rules::CssRule;
 use lightningcss::stylesheet::{ParserOptions, StyleSheet as LcssStyleSheet};
+use lightningcss::traits::ToCss;
 use lightningcss::values::color::CssColor;
 use tracing::debug;
 
@@ -89,22 +91,31 @@ fn extract_property(prop: &Property<'_>) -> (String, String) {
     let debug_str = format!("{prop:?}");
 
     // Try to extract a cleaner name from known variants.
+    //
+    // Length/dimension/font values use lightningcss's own canonical
+    // serializer (`value_to_css_string`) — NOT `format!("{:?}")`. The
+    // Debug form emits `"LengthPercentage(Dimension(Px(200.0)))"`, which
+    // neither the layout engine's `parse_px_value` nor the paint layer's
+    // parsers can read; the canonical form is `"200px"`, which both
+    // consume. This keeps the cascade's emitted value contract aligned
+    // with every downstream reader (load-bearing fix, not a per-consumer
+    // workaround).
     match prop {
         Property::Color(c) => ("color".to_string(), format_css_color(c)),
         Property::BackgroundColor(c) => ("background-color".to_string(), format_css_color(c)),
         Property::Display(d) => ("display".to_string(), format!("{d:?}").to_lowercase()),
-        Property::Width(w) => ("width".to_string(), format!("{w:?}")),
-        Property::Height(h) => ("height".to_string(), format!("{h:?}")),
-        Property::MarginTop(m) => ("margin-top".to_string(), format!("{m:?}")),
-        Property::MarginBottom(m) => ("margin-bottom".to_string(), format!("{m:?}")),
-        Property::MarginLeft(m) => ("margin-left".to_string(), format!("{m:?}")),
-        Property::MarginRight(m) => ("margin-right".to_string(), format!("{m:?}")),
-        Property::PaddingTop(p) => ("padding-top".to_string(), format!("{p:?}")),
-        Property::PaddingBottom(p) => ("padding-bottom".to_string(), format!("{p:?}")),
-        Property::PaddingLeft(p) => ("padding-left".to_string(), format!("{p:?}")),
-        Property::PaddingRight(p) => ("padding-right".to_string(), format!("{p:?}")),
-        Property::FontSize(s) => ("font-size".to_string(), format!("{s:?}")),
-        Property::FontFamily(f) => ("font-family".to_string(), format!("{f:?}")),
+        Property::Width(_) => ("width".to_string(), css_value(prop)),
+        Property::Height(_) => ("height".to_string(), css_value(prop)),
+        Property::MarginTop(_) => ("margin-top".to_string(), css_value(prop)),
+        Property::MarginBottom(_) => ("margin-bottom".to_string(), css_value(prop)),
+        Property::MarginLeft(_) => ("margin-left".to_string(), css_value(prop)),
+        Property::MarginRight(_) => ("margin-right".to_string(), css_value(prop)),
+        Property::PaddingTop(_) => ("padding-top".to_string(), css_value(prop)),
+        Property::PaddingBottom(_) => ("padding-bottom".to_string(), css_value(prop)),
+        Property::PaddingLeft(_) => ("padding-left".to_string(), css_value(prop)),
+        Property::PaddingRight(_) => ("padding-right".to_string(), css_value(prop)),
+        Property::FontSize(_) => ("font-size".to_string(), css_value(prop)),
+        Property::FontFamily(_) => ("font-family".to_string(), css_value(prop)),
         _ => {
             // Fallback: derive name from debug output.
             let name = debug_str
@@ -115,6 +126,15 @@ fn extract_property(prop: &Property<'_>) -> (String, String) {
             (name, debug_str)
         }
     }
+}
+
+/// Serialize a property's *value* to its canonical CSS string via
+/// lightningcss's own `ToCss` (e.g. `"200px"`, `"14px"`, `"sans-serif"`).
+/// Falls back to the Debug form only if serialization fails (it does not
+/// for the length/dimension/font properties this is used on).
+fn css_value(prop: &Property<'_>) -> String {
+    prop.value_to_css_string(PrinterOptions::default())
+        .unwrap_or_else(|_| format!("{prop:?}"))
 }
 
 /// Format a CSS color value to a readable string.

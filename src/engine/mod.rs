@@ -12,6 +12,14 @@
 //! browsers share one seam; the engine *implementations* that link `servo` /
 //! `wry` live in the consumer crate (namimado) where those deps belong —
 //! nami-core itself pulls in no web-engine dependency, only the contract.
+//!
+//! A pixel-painting pure-Rust engine (namimado's `NamiNativeEngine`) runs
+//! nami-core's own DOM → CSS → layout → [`crate::paint`] pipeline and hands
+//! the resulting [`crate::paint::DisplayList`] to the host via
+//! [`BrowserEngine::take_display_list`] for GPU rendering. That method has a
+//! default empty body so the existing [`SubstrateNullEngine`] (and any
+//! engine that paints nothing or owns a native subview) stays correct
+//! without overriding it.
 
 use url::Url;
 
@@ -104,6 +112,22 @@ pub trait BrowserEngine {
     /// Whether this engine paints real web pixels. `false` ⇒ the host draws
     /// its substrate-text fallback in the content rect (the null engine).
     fn renders_pixels(&self) -> bool;
+
+    /// Take the engine's current [`DisplayList`](crate::paint::DisplayList)
+    /// — the typed paint IR the host renders into GPU pixels. An engine
+    /// that builds a display list (the pure-Rust `NamiNativeEngine`)
+    /// overrides this to hand off (and clear) the list it computed on the
+    /// last `navigate`/`resize`. The default returns an empty list, so
+    /// engines that paint nothing ([`SubstrateNullEngine`]) or own their
+    /// own native subview (wry) stay correct without overriding.
+    ///
+    /// "Take" semantics: the host calls this once per frame; the engine
+    /// is free to `std::mem::take` its cached list so a stale list is
+    /// never re-rendered. The list is recomputed only on
+    /// `navigate`/`resize`, never per frame.
+    fn take_display_list(&mut self) -> crate::paint::DisplayList {
+        crate::paint::DisplayList::default()
+    }
 }
 
 /// The default pure-Rust engine: paints nothing, runs nothing. The host keeps
@@ -246,6 +270,17 @@ mod tests {
         let (mut mock, _) = MockEngine::new(false);
         mock.pump_result = false;
         assert!(!mock.pump());
+    }
+
+    #[test]
+    fn default_take_display_list_is_empty_for_null_and_mock() {
+        // SubstrateNullEngine + MockEngine do not override
+        // take_display_list → the default empty list keeps them green.
+        let mut null = SubstrateNullEngine::new();
+        assert!(null.take_display_list().is_empty());
+
+        let (mut mock, _) = MockEngine::new(true);
+        assert!(mock.take_display_list().is_empty());
     }
 
     #[test]

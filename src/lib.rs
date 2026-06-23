@@ -80,6 +80,7 @@ pub mod normalize;
 pub mod offline;
 pub mod omnibox;
 pub mod outline;
+pub mod paint;
 pub mod passkey;
 pub mod passwords;
 pub mod permission_policy;

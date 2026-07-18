@@ -35,6 +35,12 @@ signatures = ["dep:ed25519-dalek", "dep:base64", "dep:curve25519-dalek"]
 # ONLY — feature-gated so it carries zero production-closure weight; a
 # consumer's dev-deps enable `nami-core/testkit`, never a build.
 testkit = []
+# GPU rasterization of a `DisplayList` → RGBA (`nami_core::gpu`). The ONE
+# shared `DrawCmd → (QuadInstance, TextRun)` translator that mado + namimado
+# both consume, replacing their duplicated render loops. Off by default so
+# nami-core stays GPU-free for pure consumers; garasu has zero nami-core dep,
+# so pulling it here creates no cycle.
+gpu = ["dep:garasu", "dep:glyphon", "dep:wgpu", "dep:ishou-tokens"]
 
 [dependencies]
 html5ever = "0.29"
@@ -84,6 +90,14 @@ base64 = { version = "0.22", optional = true }
 hmac = "0.12"
 sha1 = "0.10"
 sha2 = "0.10"
+# ── GPU translator deps (feature `gpu`) — the shared DisplayList→RGBA
+# rasterizer both mado + namimado consume. Versions MUST match the consumers
+# (mado pins garasu a2afc2a, glyphon 0.9, wgpu 25, ishou-tokens[wgpu]) so the
+# graph unifies to one garasu/glyphon/wgpu. ──
+garasu = { git = "https://github.com/pleme-io/garasu", rev = "a2afc2ad6530ed096ab26f5d92bd4e1d348253ee", optional = true }
+glyphon = { version = "0.9", optional = true }
+wgpu = { version = "25", optional = true }
+ishou-tokens = { git = "https://github.com/pleme-io/ishou", features = ["wgpu"], optional = true }
 
 [dev-dependencies]
 # Property-based testing — fuzzes parsers + invariants across

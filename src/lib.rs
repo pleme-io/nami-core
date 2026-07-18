@@ -57,6 +57,10 @@ pub mod find;
 pub mod fingerprint_randomize;
 pub mod framework;
 pub mod gesture;
+/// The shared `DisplayList` → GPU translator (mado + namimado). Gated on `gpu`
+/// (garasu/glyphon/wgpu/ishou) so nami-core stays GPU-free by default.
+#[cfg(feature = "gpu")]
+pub mod gpu;
 pub mod high_contrast;
 pub mod history_policy;
 pub mod i18n;

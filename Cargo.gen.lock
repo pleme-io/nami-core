@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "cargo_lock_sha256": "25f201c729f4b0b8368206bda2062b08578c8e36c127a4425b2612f9c80b0953",
+  "cargo_lock_sha256": "93d24dc1697eeb869a1e4d6f302a2d3bccb0727baca12c37d0bb3db4e0ab2f64",
   "target_resolves": {
     "base": {
       "ahash-0.8.12": {

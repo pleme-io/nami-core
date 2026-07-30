@@ -49,7 +49,19 @@ lightningcss = { version = "1.0.0-alpha", default-features = false, features = [
 taffy = "0.7"
 todoku = { git = "https://github.com/pleme-io/todoku", optional = true }
 shikumi = { git = "https://github.com/pleme-io/shikumi", optional = true }
-tatara-lisp = { git = "https://github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
+# Canonical published crate from pleme-io/tatara-lisp. The derive macros are
+# re-exported by the lib itself (`DeriveTataraDomain` / `DeriveKeywordSexp`) and
+# exact-pinned there, so a consumer must NEVER name `tatara-lisp-derive` — doing
+# so is what let the two halves drift apart.
+tatara-lisp = { version = "0.3.3", optional = true }
+# NOT the same crate as tatara-lisp-eval, and deliberately still git-pinned to
+# the retired pleme-io/tatara. Its API (non-generic `Interpreter`,
+# `Value::{Attrs, Builtin}`, `String`-backed atoms) diverges from
+# tatara-lisp-eval's (`Interpreter<H>`, `Value::{Map, NativeFn}`, `Arc<str>`),
+# and it also pulls tatara-nix, which has no counterpart in tatara-lisp. Moving
+# the `eval` feature over is a rewrite of `eval`/`inline_lisp`, not a version
+# bump — tracked separately. The graph carries both tatara-lisp majors happily
+# because no nami-core type crosses between them.
 tatara-eval = { git = "https://github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
 url = { version = "2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }

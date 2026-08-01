@@ -107,13 +107,20 @@ sha2 = "0.10"
 # (mado pins garasu 4883ee7, glyphon 0.9, wgpu 25, ishou-tokens[wgpu]) so the
 # graph unifies to one garasu/glyphon/wgpu. ──
 #
-# ★ THIS REV MUST MOVE IN LOCKSTEP WITH MADO'S, and the failure mode is not
-# subtle. garasu is taken here by GIT, so mado's `[patch.crates-io]` cannot
-# unify it: bumping only mado's pin puts TWO garasu in the graph and every
-# cross-crate `GpuContext` becomes `expected garasu::context::GpuContext,
-# found GpuContext` — the split-rev duplication class. Measured 2026-07-31
-# when garasu advanced a2afc2a -> 4883ee7 for `garasu::pane`.
-garasu = { git = "https://github.com/pleme-io/garasu", rev = "4883ee7e0a124eb95d841c6655d05b7c68fb3cb0", optional = true }
+# ★ CRATES.IO, NOT A GIT REV — and that is what kills the split-rev class.
+#
+# This was `git = …, rev = a2afc2a`, and the rev had to move in lockstep
+# with mado's or the graph got TWO garasu (a git source and a different git
+# source never unify), making every cross-crate `GpuContext` an "expected
+# garasu::context::GpuContext, found GpuContext" mismatch. Measured
+# 2026-07-31.
+#
+# A semver range has no such failure mode: cargo unifies compatible
+# versions from one source automatically, so no consumer has to know what
+# any other consumer pinned. The rev pin was only ever a workaround for
+# garasu being unpublished; it is published (auto-release), so the
+# workaround can go.
+garasu = { version = "0.1", optional = true }
 glyphon = { version = "0.9", optional = true }
 wgpu = { version = "25", optional = true }
 ishou-tokens = { git = "https://github.com/pleme-io/ishou", features = ["wgpu"], optional = true }

@@ -1858,8 +1858,9 @@ dependencies = [
 
 [[package]]
 name = "garasu"
-version = "0.1.6"
-source = "git+https://github.com/pleme-io/garasu?rev=4883ee7e0a124eb95d841c6655d05b7c68fb3cb0#4883ee7e0a124eb95d841c6655d05b7c68fb3cb0"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56e5f711c62734d52b0692049a0885caed4c4ed1905904e9bc838380955168a6"
 dependencies = [
  "bincode",
  "blake3",

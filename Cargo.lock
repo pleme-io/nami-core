@@ -1858,8 +1858,8 @@ dependencies = [
 
 [[package]]
 name = "garasu"
-version = "0.1.4"
-source = "git+https://github.com/pleme-io/garasu?rev=a2afc2ad6530ed096ab26f5d92bd4e1d348253ee#a2afc2ad6530ed096ab26f5d92bd4e1d348253ee"
+version = "0.1.6"
+source = "git+https://github.com/pleme-io/garasu?rev=4883ee7e0a124eb95d841c6655d05b7c68fb3cb0#4883ee7e0a124eb95d841c6655d05b7c68fb3cb0"
 dependencies = [
  "bincode",
  "blake3",

@@ -104,9 +104,16 @@ sha1 = "0.10"
 sha2 = "0.10"
 # ── GPU translator deps (feature `gpu`) — the shared DisplayList→RGBA
 # rasterizer both mado + namimado consume. Versions MUST match the consumers
-# (mado pins garasu a2afc2a, glyphon 0.9, wgpu 25, ishou-tokens[wgpu]) so the
+# (mado pins garasu 4883ee7, glyphon 0.9, wgpu 25, ishou-tokens[wgpu]) so the
 # graph unifies to one garasu/glyphon/wgpu. ──
-garasu = { git = "https://github.com/pleme-io/garasu", rev = "a2afc2ad6530ed096ab26f5d92bd4e1d348253ee", optional = true }
+#
+# ★ THIS REV MUST MOVE IN LOCKSTEP WITH MADO'S, and the failure mode is not
+# subtle. garasu is taken here by GIT, so mado's `[patch.crates-io]` cannot
+# unify it: bumping only mado's pin puts TWO garasu in the graph and every
+# cross-crate `GpuContext` becomes `expected garasu::context::GpuContext,
+# found GpuContext` — the split-rev duplication class. Measured 2026-07-31
+# when garasu advanced a2afc2a -> 4883ee7 for `garasu::pane`.
+garasu = { git = "https://github.com/pleme-io/garasu", rev = "4883ee7e0a124eb95d841c6655d05b7c68fb3cb0", optional = true }
 glyphon = { version = "0.9", optional = true }
 wgpu = { version = "25", optional = true }
 ishou-tokens = { git = "https://github.com/pleme-io/ishou", features = ["wgpu"], optional = true }

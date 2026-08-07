@@ -47,8 +47,8 @@ html5ever = "0.29"
 markup5ever = "0.14"
 lightningcss = { version = "1.0.0-alpha", default-features = false, features = ["visitor"] }
 taffy = "0.7"
-todoku = { git = "https://github.com/pleme-io/todoku", optional = true }
-shikumi = { git = "https://github.com/pleme-io/shikumi", optional = true }
+todoku = { version = "0.1", optional = true }
+shikumi = { version = "0.1", optional = true }
 # Canonical published crate from pleme-io/tatara-lisp. The derive macros are
 # re-exported by the lib itself (`DeriveTataraDomain` / `DeriveKeywordSexp`) and
 # exact-pinned there, so a consumer must NEVER name `tatara-lisp-derive` — doing
@@ -62,7 +62,7 @@ tatara-lisp = { version = "0.3.3", optional = true }
 # the `eval` feature over is a rewrite of `eval`/`inline_lisp`, not a version
 # bump — tracked separately. The graph carries both tatara-lisp majors happily
 # because no nami-core type crosses between them.
-tatara-eval = { git = "https://github.com/pleme-io/tatara", rev = "a1062f8069bb336a87cb9b2c68a85885665e3234", optional = true }
+tatara-eval = { version = "0.2", optional = true }
 url = { version = "2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -76,7 +76,7 @@ regex = "1"
 # Compiled RegexSet DFA for blocker URL matching — one DFA pass over
 # all tracker domain patterns instead of an O(specs×domains) substring
 # scan. nami-core is hayai's first real fleet consumer.
-hayai = { git = "https://github.com/pleme-io/hayai" }
+hayai = "0.1"
 # Source-language parsing (JSX/TSX/Vue/Svelte). Feature-gated.
 tree-sitter = { version = "0.25", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }
@@ -123,7 +123,7 @@ sha2 = "0.10"
 garasu = { version = "0.1", optional = true }
 glyphon = { version = "0.9", optional = true }
 wgpu = { version = "25", optional = true }
-ishou-tokens = { git = "https://github.com/pleme-io/ishou", features = ["wgpu"], optional = true }
+ishou-tokens = { version = "0.1", features = ["wgpu"], optional = true }
 
 [dev-dependencies]
 # Property-based testing — fuzzes parsers + invariants across

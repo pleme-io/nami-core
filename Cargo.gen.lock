@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "c9c3e3e70bceb6bd96499a8cbdcd8b011604ffd88fcbe71b4d17e1be38c42e04",
+  "cargo_lock_sha256": "8135c61b913f476b790f4fdfd91ebb64e36930e662bc8721f97bb1bef1d5de6f",
   "manifest_sha256": {
-    "Cargo.toml": "16bf2f7a78ca4c6c6481d3f4dd2cc193d040b3699c9167d8458e5a7034e491ad"
+    "Cargo.toml": "aa8e5577fb7f54cd20d0d8e7e00895b979204dc116c187d8d3c9a54cfa2c470c"
   },
   "target_resolves": {
     "base": {
@@ -42,7 +42,7 @@
           },
           {
             "name": "zerocopy",
-            "package_key": "zerocopy-0.8.55",
+            "package_key": "zerocopy-0.8.56",
             "kind": "normal",
             "features": [
               "simd"
@@ -72,7 +72,7 @@
           "std"
         ]
       },
-      "aho-corasick-1.1.4": {
+      "aho-corasick-1.1.5": {
         "runtime_dependencies": [
           {
             "name": "memchr",
@@ -292,11 +292,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "clap-4.6.5": {
+      "clap-4.6.6": {
         "runtime_dependencies": [
           {
             "name": "clap_builder",
-            "package_key": "clap_builder-4.6.5",
+            "package_key": "clap_builder-4.6.6",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -311,7 +311,7 @@
           "std"
         ]
       },
-      "clap_builder-4.6.5": {
+      "clap_builder-4.6.6": {
         "runtime_dependencies": [
           {
             "name": "anstyle",
@@ -409,7 +409,7 @@
           },
           {
             "name": "clap",
-            "package_key": "clap-4.6.5",
+            "package_key": "clap-4.6.6",
             "kind": "normal",
             "features": [
               "help",
@@ -753,7 +753,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "data-encoding-2.11.0": {
+      "data-encoding-2.11.1": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": [
@@ -1253,7 +1253,7 @@
           },
           {
             "name": "zerocopy",
-            "package_key": "zerocopy-0.8.55",
+            "package_key": "zerocopy-0.8.56",
             "kind": "normal",
             "features": [
               "derive",
@@ -1273,7 +1273,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "hayai-0.1.1-25f631266f909dd2a4d52fef42bd0c8a58c9e293": {
+      "hayai-0.1.2": {
         "runtime_dependencies": [
           {
             "name": "regex",
@@ -1973,7 +1973,7 @@
           },
           {
             "name": "data_encoding",
-            "package_key": "data-encoding-2.11.0",
+            "package_key": "data-encoding-2.11.1",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2271,7 +2271,7 @@
         "runtime_dependencies": [
           {
             "name": "blake3",
-            "package_key": "blake3-1.8.5",
+            "package_key": "blake3-1.8.6",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2281,7 +2281,7 @@
           },
           {
             "name": "hayai",
-            "package_key": "hayai-0.1.1-25f631266f909dd2a4d52fef42bd0c8a58c9e293",
+            "package_key": "hayai-0.1.2",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2395,7 +2395,7 @@
           },
           {
             "name": "tatara_lisp",
-            "package_key": "tatara-lisp-0.3.22",
+            "package_key": "tatara-lisp-0.3.27",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2901,7 +2901,7 @@
         "runtime_dependencies": [
           {
             "name": "zerocopy",
-            "package_key": "zerocopy-0.8.55",
+            "package_key": "zerocopy-0.8.56",
             "kind": "normal",
             "features": [
               "simd"
@@ -3329,7 +3329,7 @@
         "runtime_dependencies": [
           {
             "name": "aho_corasick",
-            "package_key": "aho-corasick-1.1.4",
+            "package_key": "aho-corasick-1.1.5",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -3349,7 +3349,7 @@
           },
           {
             "name": "regex_automata",
-            "package_key": "regex-automata-0.4.16",
+            "package_key": "regex-automata-0.4.18",
             "kind": "normal",
             "features": [
               "alloc",
@@ -3394,11 +3394,11 @@
           "unicode-segment"
         ]
       },
-      "regex-automata-0.4.16": {
+      "regex-automata-0.4.18": {
         "runtime_dependencies": [
           {
             "name": "aho_corasick",
-            "package_key": "aho-corasick-1.1.4",
+            "package_key": "aho-corasick-1.1.5",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -4146,11 +4146,11 @@
           "taffy_tree"
         ]
       },
-      "tatara-closed-set-0.3.22": {
+      "tatara-closed-set-0.3.37": {
         "runtime_dependencies": [
           {
             "name": "tatara_closed_set_derive",
-            "package_key": "tatara-closed-set-derive-0.3.22",
+            "package_key": "tatara-closed-set-derive-0.3.37",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4162,7 +4162,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-closed-set-derive-0.3.22": {
+      "tatara-closed-set-derive-0.3.37": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4200,11 +4200,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-lisp-0.3.22": {
+      "tatara-lisp-0.3.27": {
         "runtime_dependencies": [
           {
             "name": "blake3",
-            "package_key": "blake3-1.8.5",
+            "package_key": "blake3-1.8.6",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4236,7 +4236,7 @@
           },
           {
             "name": "tatara_closed_set",
-            "package_key": "tatara-closed-set-0.3.22",
+            "package_key": "tatara-closed-set-0.3.37",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4246,7 +4246,7 @@
           },
           {
             "name": "tatara_lisp_derive",
-            "package_key": "tatara-lisp-derive-0.3.22",
+            "package_key": "tatara-lisp-derive-0.3.27",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4270,7 +4270,7 @@
           "default"
         ]
       },
-      "tatara-lisp-derive-0.3.22": {
+      "tatara-lisp-derive-0.3.27": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -5046,11 +5046,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "zerocopy-0.8.55": {
+      "zerocopy-0.8.56": {
         "runtime_dependencies": [
           {
             "name": "zerocopy_derive",
-            "package_key": "zerocopy-derive-0.8.55",
+            "package_key": "zerocopy-derive-0.8.56",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -5060,7 +5060,7 @@
           },
           {
             "name": "zerocopy_derive",
-            "package_key": "zerocopy-derive-0.8.55",
+            "package_key": "zerocopy-derive-0.8.56",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -5076,7 +5076,7 @@
           "zerocopy-derive"
         ]
       },
-      "zerocopy-derive-0.8.55": {
+      "zerocopy-derive-0.8.56": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -5307,7 +5307,7 @@
     "targets": {
       "aarch64-apple-darwin": {
         "overrides": {
-          "blake3-1.8.5": {
+          "blake3-1.8.6": {
             "runtime_dependencies": [
               {
                 "name": "arrayref",
@@ -5488,7 +5488,7 @@
       },
       "aarch64-unknown-linux-gnu": {
         "overrides": {
-          "blake3-1.8.5": {
+          "blake3-1.8.6": {
             "runtime_dependencies": [
               {
                 "name": "arrayref",
@@ -5712,7 +5712,7 @@
       },
       "aarch64-unknown-linux-musl": {
         "overrides": {
-          "blake3-1.8.5": {
+          "blake3-1.8.6": {
             "runtime_dependencies": [
               {
                 "name": "arrayref",
@@ -5936,7 +5936,7 @@
       },
       "x86_64-apple-darwin": {
         "overrides": {
-          "blake3-1.8.5": {
+          "blake3-1.8.6": {
             "runtime_dependencies": [
               {
                 "name": "arrayref",
@@ -6091,7 +6091,7 @@
       },
       "x86_64-unknown-linux-gnu": {
         "overrides": {
-          "blake3-1.8.5": {
+          "blake3-1.8.6": {
             "runtime_dependencies": [
               {
                 "name": "arrayref",
@@ -6289,7 +6289,7 @@
       },
       "x86_64-unknown-linux-musl": {
         "overrides": {
-          "blake3-1.8.5": {
+          "blake3-1.8.6": {
             "runtime_dependencies": [
               {
                 "name": "arrayref",
@@ -6492,7 +6492,7 @@
       "edition": "2018",
       "build_script": "build.rs"
     },
-    "aho-corasick-1.1.4": {
+    "aho-corasick-1.1.5": {
       "edition": "2021"
     },
     "anes-0.1.6": {
@@ -6519,7 +6519,7 @@
     "bitflags-2.13.1": {
       "edition": "2021"
     },
-    "blake3-1.8.5": {
+    "blake3-1.8.6": {
       "edition": "2024",
       "build_script": "build.rs"
     },
@@ -6547,7 +6547,7 @@
     "ciborium-ll-0.2.2": {
       "edition": "2021"
     },
-    "clap-4.6.5": {
+    "clap-4.6.6": {
       "edition": "2024",
       "binaries": [
         {
@@ -6556,7 +6556,7 @@
         }
       ]
     },
-    "clap_builder-4.6.5": {
+    "clap_builder-4.6.6": {
       "edition": "2024"
     },
     "clap_lex-1.1.0": {
@@ -6616,7 +6616,7 @@
         "path": "lib.rs"
       }
     },
-    "data-encoding-2.11.0": {
+    "data-encoding-2.11.1": {
       "edition": "2018"
     },
     "digest-0.10.7": {
@@ -6684,7 +6684,7 @@
     "hashbrown-0.17.1": {
       "edition": "2024"
     },
-    "hayai-0.1.1-25f631266f909dd2a4d52fef42bd0c8a58c9e293": {
+    "hayai-0.1.2": {
       "edition": "2024"
     },
     "hmac-0.12.1": {
@@ -6931,7 +6931,7 @@
     "regex-1.13.1": {
       "edition": "2021"
     },
-    "regex-automata-0.4.16": {
+    "regex-automata-0.4.18": {
       "edition": "2021"
     },
     "regex-syntax-0.8.11": {
@@ -7023,17 +7023,17 @@
     "taffy-0.7.7": {
       "edition": "2021"
     },
-    "tatara-closed-set-0.3.22": {
+    "tatara-closed-set-0.3.37": {
       "edition": "2021"
     },
-    "tatara-closed-set-derive-0.3.22": {
+    "tatara-closed-set-derive-0.3.37": {
       "edition": "2021",
       "proc_macro": true
     },
-    "tatara-lisp-0.3.22": {
+    "tatara-lisp-0.3.27": {
       "edition": "2021"
     },
-    "tatara-lisp-derive-0.3.22": {
+    "tatara-lisp-derive-0.3.27": {
       "edition": "2021",
       "proc_macro": true
     },
@@ -7147,11 +7147,11 @@
       "edition": "2021",
       "proc_macro": true
     },
-    "zerocopy-0.8.55": {
+    "zerocopy-0.8.56": {
       "edition": "2021",
       "build_script": "build.rs"
     },
-    "zerocopy-derive-0.8.55": {
+    "zerocopy-derive-0.8.56": {
       "edition": "2021",
       "proc_macro": true
     },
@@ -7177,8 +7177,6 @@
       "build_script": "build.rs"
     }
   },
-  "git_nar_sha256": {
-    "hayai-0.1.1-25f631266f909dd2a4d52fef42bd0c8a58c9e293": "sha256-lB3vZ9vqpJ3uWCFcH1xncL10sa1kV/09bmAWMTsWC2M="
-  },
+  "git_nar_sha256": {},
   "flake_metadata": {}
 }

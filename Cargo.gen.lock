@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "6275389fd313d11014e850a0355d2d894991ecb9cd0e9659afb756159012185c",
+  "cargo_lock_sha256": "eafc903d087f9d7fc60ad0336e6191c9923279d0c6e6d4d2f676bcc2782bda11",
   "manifest_sha256": {
-    "Cargo.toml": "5b1a5e191a804bf059169a5bc2aaa75dec25a318a80ca8f1e36612282a6fece0"
+    "Cargo.toml": "fc8705e39cd740b88d42750033301087a68c5683a6b01e0e910979ff07bd54e8"
   },
   "target_resolves": {
     "base": {
@@ -183,11 +183,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "cc-1.4.0": {
+      "cc-1.4.1": {
         "runtime_dependencies": [
           {
             "name": "find_msvc_tools",
-            "package_key": "find-msvc-tools-0.1.9",
+            "package_key": "find-msvc-tools-0.1.10",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -923,7 +923,7 @@
           "std"
         ]
       },
-      "find-msvc-tools-0.1.9": {
+      "find-msvc-tools-0.1.10": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -2267,7 +2267,7 @@
           "std"
         ]
       },
-      "nami-core-0.1.11": {
+      "nami-core-0.1.12": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -5353,7 +5353,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.0",
+                "package_key": "cc-1.4.1",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5534,7 +5534,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.0",
+                "package_key": "cc-1.4.1",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5758,7 +5758,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.0",
+                "package_key": "cc-1.4.1",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5992,7 +5992,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.0",
+                "package_key": "cc-1.4.1",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6147,7 +6147,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.0",
+                "package_key": "cc-1.4.1",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6345,7 +6345,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.0",
+                "package_key": "cc-1.4.1",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6532,8 +6532,8 @@
     "cast-0.3.0": {
       "edition": "2018"
     },
-    "cc-1.4.0": {
-      "edition": "2018"
+    "cc-1.4.1": {
+      "edition": "2021"
     },
     "cfg-if-1.0.4": {
       "edition": "2018"
@@ -6644,8 +6644,8 @@
     "fastrand-2.5.0": {
       "edition": "2018"
     },
-    "find-msvc-tools-0.1.9": {
-      "edition": "2018"
+    "find-msvc-tools-0.1.10": {
+      "edition": "2021"
     },
     "fnv-1.0.7": {
       "edition": "2015",
@@ -6787,7 +6787,7 @@
     "memchr-2.8.3": {
       "edition": "2021"
     },
-    "nami-core-0.1.11": {
+    "nami-core-0.1.12": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",

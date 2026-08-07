@@ -656,9 +656,9 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5add81bb678e6cb321aff7fa0dc7689ad82b112dbc032cea19f91d6b8e3582b9"
+checksum = "9066c49992464636f92905fa096ec58baaa4d57ec19a5c096c68d3e25ef3d136"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -1628,9 +1628,9 @@ dependencies = [
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
+checksum = "26b73573e6edcd2af0cdf47bd6cb58f0b3839491263c314eaad1ccf24430e1de"
 
 [[package]]
 name = "flate2"
@@ -2409,7 +2409,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core",
+ "windows-core 0.62.2",
 ]
 
 [[package]]
@@ -2623,9 +2623,9 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "ishou-tokens"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2abd6028743865f80057c30ae3e0285e37cfb20dc9d6278a66d4b7ecd283745c"
+checksum = "aac1ba9d3d3a049101c12b62a09e5c008b4c4b42e79af359ae808653b2c7d73a"
 dependencies = [
  "irodori",
  "serde",
@@ -3233,7 +3233,7 @@ dependencies = [
 
 [[package]]
 name = "nami-core"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "base64",
  "blake3",
@@ -5454,9 +5454,9 @@ dependencies = [
 
 [[package]]
 name = "tatara-core"
-version = "0.2.187"
+version = "0.2.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c5ef77050ec67ae1884e3f5cc8827d731ae6bfe4b57f7a3e53a363234897a4c"
+checksum = "548c9f02281e1b8dfe62a33ba8b14525b034621c366d1ab3fd72f904e2115ad6"
 dependencies = [
  "anyhow",
  "blake3",
@@ -5491,9 +5491,9 @@ dependencies = [
 
 [[package]]
 name = "tatara-lattice"
-version = "0.2.187"
+version = "0.2.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b916a043eea3f3777c658e4e1e57dad49722c1c62e8199c3cf76a2d58ebd5171"
+checksum = "b96f5f5d003b9492ffc829ebf0e75811a7f46206f43e1a9d5f1c7207abbb8b12"
 dependencies = [
  "schemars 0.8.22",
  "serde",
@@ -5528,9 +5528,9 @@ dependencies = [
 
 [[package]]
 name = "tatara-nix"
-version = "0.2.187"
+version = "0.2.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f6684a6aedcec404a94da355c6d4e4475959ff582470a87a338280737618ba6"
+checksum = "05379981398e458d3af715af54560d34828e070ebfc530805fa3115d050e3dd3"
 dependencies = [
  "blake3",
  "hex",
@@ -6941,7 +6941,7 @@ dependencies = [
  "web-sys",
  "wgpu-types",
  "windows",
- "windows-core",
+ "windows-core 0.58.0",
 ]
 
 [[package]]
@@ -7034,7 +7034,7 @@ version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd04d41d93c4992d421894c18c8b43496aa748dd4c081bac0dc93eb0489272b6"
 dependencies = [
- "windows-core",
+ "windows-core 0.58.0",
  "windows-targets 0.52.6",
 ]
 
@@ -7044,11 +7044,24 @@ version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ba6d44ec8c2591c134257ce647b7ea6b20335bf6379a27dac5f1641fcf59f99"
 dependencies = [
- "windows-implement",
- "windows-interface",
+ "windows-implement 0.58.0",
+ "windows-interface 0.58.0",
  "windows-result 0.2.0",
  "windows-strings 0.1.0",
  "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-core"
+version = "0.62.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8e83a14d34d0623b51dce9581199302a221863196a1dde71a7663a4c2be9deb"
+dependencies = [
+ "windows-implement 0.60.2",
+ "windows-interface 0.59.3",
+ "windows-link",
+ "windows-result 0.4.1",
+ "windows-strings 0.5.1",
 ]
 
 [[package]]
@@ -7063,10 +7076,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows-implement"
+version = "0.60.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "053e2e040ab57b9dc951b72c264860db7eb3b0200ba345b4e4c3b14f67855ddf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "windows-interface"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "053c4c462dc91d3b1504c6fe5a726dd15e216ba718e84a0e46a88fbe5ded3515"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "windows-interface"
+version = "0.59.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f316c4a2570ba26bbec722032c4099d8c8bc095efccdc15688708623367e358"
 dependencies = [
  "proc-macro2",
  "quote",

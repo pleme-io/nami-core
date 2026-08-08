@@ -3232,49 +3232,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nami-core"
-version = "0.1.12"
-dependencies = [
- "base64",
- "blake3",
- "criterion",
- "curve25519-dalek",
- "ed25519-dalek",
- "garasu",
- "glyphon",
- "hayai",
- "hmac",
- "html5ever",
- "ishou-tokens",
- "lightningcss",
- "markup5ever",
- "proptest",
- "rand 0.8.7",
- "regex",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "shikumi",
- "taffy",
- "tatara-eval",
- "tatara-lisp",
- "thiserror 2.0.19",
- "todoku",
- "tokio",
- "tracing",
- "tree-sitter",
- "tree-sitter-svelte-next",
- "tree-sitter-typescript",
- "url",
- "wasi-common",
- "wasmtime",
- "wasmtime-wasi",
- "wat",
- "wgpu",
-]
-
-[[package]]
 name = "ndk"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3983,6 +3940,49 @@ name = "plain"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
+
+[[package]]
+name = "pleme-nami-core"
+version = "0.1.12"
+dependencies = [
+ "base64",
+ "blake3",
+ "criterion",
+ "curve25519-dalek",
+ "ed25519-dalek",
+ "garasu",
+ "glyphon",
+ "hayai",
+ "hmac",
+ "html5ever",
+ "ishou-tokens",
+ "lightningcss",
+ "markup5ever",
+ "proptest",
+ "rand 0.8.7",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "shikumi",
+ "taffy",
+ "tatara-eval",
+ "tatara-lisp",
+ "thiserror 2.0.19",
+ "todoku",
+ "tokio",
+ "tracing",
+ "tree-sitter",
+ "tree-sitter-svelte-next",
+ "tree-sitter-typescript",
+ "url",
+ "wasi-common",
+ "wasmtime",
+ "wasmtime-wasi",
+ "wat",
+ "wgpu",
+]
 
 [[package]]
 name = "polling"

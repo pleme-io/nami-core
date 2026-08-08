@@ -1,11 +1,27 @@
 [package]
-name = "nami-core"
+# ★ The bare name `nami-core` on crates.io is NOT ours — it belongs to
+# water-rs (https://github.com/water-rs/nami, "a reactive framework"), the same
+# org that owns `mado`. Measured 2026-08-08: their 0.3.2 exposes only
+# `default`/`std`, so a consumer flipped to the bare name fails on unknown
+# features rather than on the name, which is the confusing way to find this out.
+#
+# So the PACKAGE is published as `pleme-nami-core` while `[lib] name` stays
+# `nami_core`: every `use nami_core::…` across the fleet is untouched, and a
+# consumer renames at its own manifest with
+# `nami-core = { package = "pleme-nami-core", … }`. Same shape magma uses for
+# `magma-core`.
+name = "pleme-nami-core"
 version = "0.1.12"
 edition = "2024"
 rust-version = "1.89.0"
 license = "MIT"
 description = "Shared browser core — HTML parsing, CSS cascade, layout, DOM, networking"
 repository = "https://github.com/pleme-io/nami-core"
+
+[lib]
+# Keep the import path `nami_core` regardless of the published package name.
+name = "nami_core"
+path = "src/lib.rs"
 
 [features]
 default = ["lisp"]

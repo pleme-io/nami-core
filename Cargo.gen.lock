@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "e81943e6e7f06a03a7d1c9131d0c838d55e2c41c7fba04b90eea821b515c8094",
+  "cargo_lock_sha256": "39304a163defdf7726c11062f791fe402abd074164ff4c83089a85d59ef81678",
   "manifest_sha256": {
-    "Cargo.toml": "368ba710f9022f599d7d1144184b1f439373b89b864fadc94e68c782dc07b017"
+    "Cargo.toml": "d0ccd6c853a9ee3058a733c1fadcc2218ca60cf036b951809f3fd4f02b924f35"
   },
   "target_resolves": {
     "base": {
@@ -183,7 +183,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "cc-1.4.1": {
+      "cc-1.4.2": {
         "runtime_dependencies": [
           {
             "name": "find_msvc_tools",
@@ -1309,7 +1309,7 @@
           },
           {
             "name": "thiserror",
-            "package_key": "thiserror-2.0.19",
+            "package_key": "thiserror-2.0.20",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2704,7 +2704,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "pleme-nami-core-0.1.12": {
+      "pleme-nami-core-0.1.13": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -2832,7 +2832,7 @@
           },
           {
             "name": "tatara_lisp",
-            "package_key": "tatara-lisp-0.3.27",
+            "package_key": "tatara-lisp-0.3.41",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2842,7 +2842,7 @@
           },
           {
             "name": "thiserror",
-            "package_key": "thiserror-2.0.19",
+            "package_key": "thiserror-2.0.20",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4146,11 +4146,11 @@
           "taffy_tree"
         ]
       },
-      "tatara-closed-set-0.3.37": {
+      "tatara-closed-set-0.3.41": {
         "runtime_dependencies": [
           {
             "name": "tatara_closed_set_derive",
-            "package_key": "tatara-closed-set-derive-0.3.37",
+            "package_key": "tatara-closed-set-derive-0.3.41",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4162,7 +4162,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-closed-set-derive-0.3.37": {
+      "tatara-closed-set-derive-0.3.41": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4200,7 +4200,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-lisp-0.3.27": {
+      "tatara-lisp-0.3.41": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -4236,7 +4236,7 @@
           },
           {
             "name": "tatara_closed_set",
-            "package_key": "tatara-closed-set-0.3.37",
+            "package_key": "tatara-closed-set-0.3.41",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4246,7 +4246,7 @@
           },
           {
             "name": "tatara_lisp_derive",
-            "package_key": "tatara-lisp-derive-0.3.27",
+            "package_key": "tatara-lisp-derive-0.3.41",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4256,7 +4256,7 @@
           },
           {
             "name": "thiserror",
-            "package_key": "thiserror-2.0.19",
+            "package_key": "thiserror-2.0.20",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4270,7 +4270,7 @@
           "default"
         ]
       },
-      "tatara-lisp-derive-0.3.27": {
+      "tatara-lisp-derive-0.3.41": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4397,11 +4397,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "thiserror-2.0.19": {
+      "thiserror-2.0.20": {
         "runtime_dependencies": [
           {
             "name": "thiserror_impl",
-            "package_key": "thiserror-impl-2.0.19",
+            "package_key": "thiserror-impl-2.0.20",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4416,7 +4416,7 @@
           "std"
         ]
       },
-      "thiserror-impl-2.0.19": {
+      "thiserror-impl-2.0.20": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -5353,7 +5353,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.1",
+                "package_key": "cc-1.4.2",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5534,7 +5534,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.1",
+                "package_key": "cc-1.4.2",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5758,7 +5758,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.1",
+                "package_key": "cc-1.4.2",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5992,7 +5992,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.1",
+                "package_key": "cc-1.4.2",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6147,7 +6147,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.1",
+                "package_key": "cc-1.4.2",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6345,7 +6345,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.1",
+                "package_key": "cc-1.4.2",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6532,7 +6532,7 @@
     "cast-0.3.0": {
       "edition": "2018"
     },
-    "cc-1.4.1": {
+    "cc-1.4.2": {
       "edition": "2021"
     },
     "cfg-if-1.0.4": {
@@ -6869,7 +6869,7 @@
     "pin-project-lite-0.2.17": {
       "edition": "2018"
     },
-    "pleme-nami-core-0.1.12": {
+    "pleme-nami-core-0.1.13": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",
@@ -7023,17 +7023,17 @@
     "taffy-0.7.7": {
       "edition": "2021"
     },
-    "tatara-closed-set-0.3.37": {
+    "tatara-closed-set-0.3.41": {
       "edition": "2021"
     },
-    "tatara-closed-set-derive-0.3.37": {
+    "tatara-closed-set-derive-0.3.41": {
       "edition": "2021",
       "proc_macro": true
     },
-    "tatara-lisp-0.3.27": {
+    "tatara-lisp-0.3.41": {
       "edition": "2021"
     },
-    "tatara-lisp-derive-0.3.27": {
+    "tatara-lisp-derive-0.3.41": {
       "edition": "2021",
       "proc_macro": true
     },
@@ -7043,11 +7043,11 @@
     "tendril-0.4.3": {
       "edition": "2015"
     },
-    "thiserror-2.0.19": {
+    "thiserror-2.0.20": {
       "edition": "2021",
       "build_script": "build.rs"
     },
-    "thiserror-impl-2.0.19": {
+    "thiserror-impl-2.0.20": {
       "edition": "2021",
       "proc_macro": true
     },

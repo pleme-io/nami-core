@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "e08c4053c53e45110767696ae5b253e91e24d7442c3b092f3be60ce7723fedf4",
+  "cargo_lock_sha256": "5d4324d6b4940a82774db6f68de8f4871df32569b5cad0d3a4949dd7b05d936d",
   "manifest_sha256": {
-    "Cargo.toml": "08f74fe02ff220213e0b2d0d8a9ae716d5e4ed95602137980d2d5e3e5e34fa07"
+    "Cargo.toml": "44b498e4fc0afb0a2f637b4e1ecd25abe588487d8accfc1696af491e83ba08a8"
   },
   "target_resolves": {
     "base": {
@@ -2704,7 +2704,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "pleme-nami-core-0.1.15": {
+      "pleme-nami-core-0.1.16": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -6869,7 +6869,7 @@
     "pin-project-lite-0.2.17": {
       "edition": "2018"
     },
-    "pleme-nami-core-0.1.15": {
+    "pleme-nami-core-0.1.16": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",

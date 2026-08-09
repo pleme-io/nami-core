@@ -1848,9 +1848,9 @@ dependencies = [
 
 [[package]]
 name = "garasu"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56e5f711c62734d52b0692049a0885caed4c4ed1905904e9bc838380955168a6"
+checksum = "1e079d0252d9f1d4eff4c7229e15dc73af576f5e4f5adf26b97455daad501daa"
 dependencies = [
  "bincode",
  "blake3",
@@ -1858,6 +1858,7 @@ dependencies = [
  "dirs",
  "fontdb",
  "glyphon",
+ "lru",
  "pollster",
  "raw-window-handle",
  "serde",
@@ -3071,6 +3072,9 @@ name = "lru"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "234cf4f4a04dc1f57e24b96cc0cd600cf2af460d4161ac5ecdd0af8e1f3b2a38"
+dependencies = [
+ "hashbrown 0.15.5",
+]
 
 [[package]]
 name = "lru-slab"
@@ -3943,7 +3947,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "pleme-nami-core"
-version = "0.1.15"
+version = "0.1.16"
 dependencies = [
  "base64",
  "blake3",

@@ -614,6 +614,26 @@ pub struct StyledNode {
     pub children: Vec<StyledNode>,
 }
 
+impl StyledNode {
+    /// Force `display:none` on this node and every descendant.
+    ///
+    /// An element with `display:none` generates no box, and neither do any of
+    /// its descendants — suppression belongs to the box tree, not to
+    /// inheritance. Because `display` is not an inherited property, a text node
+    /// inside `<script>` would otherwise compute the initial `inline` and paint
+    /// its JS source into the page (measured: 282 such nodes on google.com).
+    ///
+    /// Applied by [`StyleResolver::resolve_node`] AFTER the child's own cascade
+    /// runs, so no author rule can resurrect a suppressed subtree.
+    pub fn suppress_subtree(&mut self) {
+        self.style
+            .set("display".to_string(), "none".to_string());
+        for child in &mut self.children {
+            child.suppress_subtree();
+        }
+    }
+}
+
 /// A tree of styled nodes produced by cascade resolution.
 #[derive(Debug, Clone)]
 pub struct StyledTree {
@@ -729,12 +749,37 @@ impl StyleResolver {
             }
         }
 
+        // ── `display:none` suppresses the whole SUBTREE ────────────────
+        //
+        // `display` is NOT an inherited property, so a text node inside a
+        // `display:none` element computes the initial `inline` — and a paint
+        // guard that checks a node's OWN display then correctly skips the
+        // `<script>` element while happily painting its text child.
+        //
+        // Measured on a live google.com fetch 2026-08-09: 14 `<script>`
+        // elements ALL computed `display:none`, every JS text node sat under
+        // one of them, and 282 children of `display:none` elements still
+        // computed `Inline` — which is why 23 draw commands painted Google's
+        // minified JS into the page body. The operator saw it on screen.
+        //
+        // Suppression is a property of the BOX TREE, not of inheritance: an
+        // element with `display:none` generates no box, so none of its
+        // descendants do either. Forcing it here — at the one place that
+        // builds the styled tree — fixes the class for every consumer
+        // (paint, layout, text extraction) rather than re-guarding at each.
+        // Note this is deliberately NOT `style.set("display", …)`: author CSS
+        // must never be able to resurrect a suppressed subtree.
+        let subtree_suppressed = style.display() == crate::css::values::Display::None;
+
         let mut child_index = index + 1;
         let children = node
             .children
             .iter()
             .map(|child| {
-                let styled = self.resolve_node(child, child_index, Some(&style));
+                let mut styled = self.resolve_node(child, child_index, Some(&style));
+                if subtree_suppressed {
+                    styled.suppress_subtree();
+                }
                 child_index += count_descendants(child);
                 styled
             })

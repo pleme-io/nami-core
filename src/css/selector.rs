@@ -21,19 +21,28 @@
 //! ## Unrepresentability tier
 //!
 //! *Parse-time-rejected / total*: [`parse_selector_list`] never fails — it
-//! produces zero or more [`CompoundSelector`]s. An empty / unparseable
-//! compound becomes the universal match-all (the safe CSS-ish default for a
-//! selector the cascade can't refine), never a silently-wrong match against
-//! the wrong element. [`CompoundSelector::matches`] is a pure predicate over
-//! typed fields — there is no string to misinterpret.
+//! produces zero or more [`CompoundSelector`]s. [`CompoundSelector::matches`]
+//! is a pure predicate over typed fields — there is no string to misinterpret.
+//!
+//! **Unrepresentable selectors FAIL CLOSED.** A fragment that carries syntax
+//! this type cannot express (`:root`, `[attr]`, `:is(…)`) and leaves no
+//! surviving constraint is marked [`CompoundSelector::never_matches`] and
+//! matches nothing. It used to collapse to the universal match-all, described
+//! here as "the safe CSS-ish default" — that was exactly backwards, since it
+//! applies an unevaluated rule to EVERY element. Measured on google.com: 8 of
+//! 946 author rules matched `<script>` that way and overrode the UA sheet's
+//! `script{display:none}`, painting minified JS into the page. Only a literal
+//! `*` is universal now.
 
 use crate::dom::ElementData;
 
 /// A single compound selector — constraints that must all hold on **one**
 /// element: an optional tag, an optional id, and zero or more classes.
 ///
-/// An all-`None`/empty compound is the universal selector (`*` or an
-/// unparseable fragment) and matches every element.
+/// An all-`None`/empty compound is the universal selector (`*`) and matches
+/// every element. A compound whose source carried syntax this type cannot
+/// represent is [`never_matches`](Self::never_matches) instead — see there for
+/// why that is not the same thing.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CompoundSelector {
     /// Tag name constraint (case-insensitive), or `None` for "any tag".
@@ -42,6 +51,26 @@ pub struct CompoundSelector {
     pub id: Option<String>,
     /// Class constraints — the element must carry **all** of these.
     pub classes: Vec<String>,
+    /// The source selector carried syntax this type cannot represent — an
+    /// attribute selector, a standalone pseudo like `:root`, `:is(…)` — and
+    /// nothing constraining survived parsing. Such a compound matches
+    /// **nothing**.
+    ///
+    /// ## Why this exists (measured, 2026-08-09)
+    ///
+    /// This used to collapse to the universal selector, on the reasoning that
+    /// match-all was "the safe default for a selector the cascade can't
+    /// refine". It is the opposite of safe: it applies a rule to EVERY element
+    /// on the page. On a live google.com fetch, 8 of 946 author rules matched
+    /// `<script>` that way — including `:root{--x:…}` blocks and one
+    /// `display:block` — which overrode the UA sheet's `script{display:none}`
+    /// on 37 elements and painted Google's minified JS into the page body.
+    /// The operator saw it on screen.
+    ///
+    /// Fail-closed is the correct default: a selector we cannot evaluate must
+    /// not claim to match. The cost is a missed style; the alternative is every
+    /// unsupported rule applying universally.
+    pub never_matches: bool,
 }
 
 impl CompoundSelector {
@@ -127,6 +156,14 @@ impl CompoundSelector {
         if !in_pseudo {
             flush(kind, &mut buf, &mut sel);
         }
+
+        // Nothing constraining survived, and the author did not write `*`.
+        // The source therefore held syntax this type cannot represent
+        // (`:root`, `[attr]`, `:is(…)`, …). Refuse to match rather than match
+        // everything — see `never_matches`.
+        if sel.tag.is_none() && sel.id.is_none() && sel.classes.is_empty() && compound != "*" {
+            sel.never_matches = true;
+        }
         sel
     }
 
@@ -139,6 +176,11 @@ impl CompoundSelector {
     /// An all-empty compound (universal) matches every element.
     #[must_use]
     pub fn matches(&self, el: &ElementData) -> bool {
+        // A selector we could not represent matches nothing. Checked FIRST so
+        // no later constraint can accidentally admit it.
+        if self.never_matches {
+            return false;
+        }
         if let Some(tag) = &self.tag {
             if !el.tag.eq_ignore_ascii_case(tag) {
                 return false;
@@ -160,7 +202,9 @@ impl CompoundSelector {
     /// Whether this compound constrains nothing — the universal selector.
     #[must_use]
     pub fn is_universal(&self) -> bool {
-        self.tag.is_none() && self.id.is_none() && self.classes.is_empty()
+        // `never_matches` is the opposite of universal: it constrains nothing
+        // AND matches nothing, so it must not report as match-all.
+        !self.never_matches && self.tag.is_none() && self.id.is_none() && self.classes.is_empty()
     }
 }
 
@@ -397,5 +441,85 @@ mod tests {
         assert_eq!(list.len(), 2);
         assert_eq!(list[0].tag.as_deref(), Some("div"));
         assert_eq!(list[1].classes, vec!["box".to_string()]);
+    }
+}
+
+#[cfg(test)]
+mod fail_closed_tests {
+    use super::*;
+    use crate::dom::ElementData;
+
+    fn el(tag: &str) -> ElementData {
+        ElementData::new(tag)
+    }
+
+    /// `:root` must not match every element. This is the exact shape that
+    /// leaked Google's JS: `:root{--x:…}` blocks matched `<script>`.
+    #[test]
+    fn root_pseudo_does_not_match_everything() {
+        let s = CompoundSelector::parse(":root");
+        assert!(s.never_matches, "':root' must not collapse to match-all");
+        assert!(!s.matches(&el("script")));
+        assert!(!s.matches(&el("div")));
+        assert!(!s.is_universal());
+    }
+
+    /// The genuine universal selector still matches everything.
+    #[test]
+    fn explicit_universal_still_matches() {
+        let s = CompoundSelector::parse("*");
+        assert!(!s.never_matches);
+        assert!(s.is_universal());
+        assert!(s.matches(&el("script")));
+        assert!(s.matches(&el("div")));
+    }
+
+    /// Attribute selectors must not match everything.
+    ///
+    /// Asserts the BEHAVIOUR, not the mechanism — measured, `[jsname]` parses
+    /// to `tag = Some("[jsname]")` rather than to `never_matches`, because the
+    /// tokenizer treats the whole bracketed run as a tag name. No element has
+    /// that tag, so it already fails closed. This test originally asserted
+    /// `never_matches` and failed for that reason; the code was right and the
+    /// assertion was wrong. What matters is that it matches nothing.
+    #[test]
+    fn attribute_selector_matches_nothing() {
+        for src in ["[jsname]", "[data-x=\"1\"]", "[hidden]"] {
+            let s = CompoundSelector::parse(src);
+            assert!(!s.is_universal(), "{src} must not be universal");
+            for tag in ["div", "script", "span", "body"] {
+                assert!(!s.matches(&el(tag)), "{src} must not match <{tag}>");
+            }
+        }
+    }
+
+    /// A pseudo attached to a real constraint keeps that constraint — the
+    /// compound is still meaningful, so it must NOT fail closed.
+    #[test]
+    fn pseudo_on_a_real_tag_keeps_the_tag() {
+        let s = CompoundSelector::parse("a:hover");
+        assert!(!s.never_matches);
+        assert_eq!(s.tag.as_deref(), Some("a"));
+        assert!(s.matches(&el("a")));
+        assert!(!s.matches(&el("div")));
+    }
+
+    #[test]
+    fn ordinary_selectors_are_unaffected() {
+        assert!(CompoundSelector::parse("div").matches(&el("div")));
+        assert!(!CompoundSelector::parse("div").never_matches);
+        let c = CompoundSelector::parse(".box");
+        assert!(!c.never_matches);
+        let i = CompoundSelector::parse("#hero");
+        assert!(!i.never_matches);
+    }
+
+    /// An empty fragment is still the universal default (parse_selector_list
+    /// filters these out before they reach the cascade).
+    #[test]
+    fn empty_fragment_stays_universal() {
+        let s = CompoundSelector::parse("");
+        assert!(!s.never_matches);
+        assert!(s.is_universal());
     }
 }

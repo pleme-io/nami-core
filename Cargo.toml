@@ -11,7 +11,7 @@
 # `nami-core = { package = "pleme-nami-core", … }`. Same shape magma uses for
 # `magma-core`.
 name = "pleme-nami-core"
-version = "0.1.13"
+version = "0.1.14"
 edition = "2024"
 rust-version = "1.89.0"
 license = "MIT"

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "39304a163defdf7726c11062f791fe402abd074164ff4c83089a85d59ef81678",
+  "cargo_lock_sha256": "6d16113e252aa2b474b4c2397cf17ec3dd7f8e2d10bc0f9e9f70f24dce1a2e8a",
   "manifest_sha256": {
-    "Cargo.toml": "d0ccd6c853a9ee3058a733c1fadcc2218ca60cf036b951809f3fd4f02b924f35"
+    "Cargo.toml": "f35a63e38be1e7526b4fd6756d36af81845316f72422e37995119252a72924ad"
   },
   "target_resolves": {
     "base": {
@@ -2704,7 +2704,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "pleme-nami-core-0.1.13": {
+      "pleme-nami-core-0.1.14": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -2832,7 +2832,7 @@
           },
           {
             "name": "tatara_lisp",
-            "package_key": "tatara-lisp-0.3.41",
+            "package_key": "tatara-lisp-0.3.43",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4146,11 +4146,11 @@
           "taffy_tree"
         ]
       },
-      "tatara-closed-set-0.3.41": {
+      "tatara-closed-set-0.3.43": {
         "runtime_dependencies": [
           {
             "name": "tatara_closed_set_derive",
-            "package_key": "tatara-closed-set-derive-0.3.41",
+            "package_key": "tatara-closed-set-derive-0.3.43",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4162,7 +4162,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-closed-set-derive-0.3.41": {
+      "tatara-closed-set-derive-0.3.43": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4200,7 +4200,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-lisp-0.3.41": {
+      "tatara-lisp-0.3.43": {
         "runtime_dependencies": [
           {
             "name": "blake3",
@@ -4236,7 +4236,7 @@
           },
           {
             "name": "tatara_closed_set",
-            "package_key": "tatara-closed-set-0.3.41",
+            "package_key": "tatara-closed-set-0.3.43",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4246,7 +4246,7 @@
           },
           {
             "name": "tatara_lisp_derive",
-            "package_key": "tatara-lisp-derive-0.3.41",
+            "package_key": "tatara-lisp-derive-0.3.43",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4270,7 +4270,7 @@
           "default"
         ]
       },
-      "tatara-lisp-derive-0.3.41": {
+      "tatara-lisp-derive-0.3.43": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -6869,7 +6869,7 @@
     "pin-project-lite-0.2.17": {
       "edition": "2018"
     },
-    "pleme-nami-core-0.1.13": {
+    "pleme-nami-core-0.1.14": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",
@@ -7023,17 +7023,17 @@
     "taffy-0.7.7": {
       "edition": "2021"
     },
-    "tatara-closed-set-0.3.41": {
+    "tatara-closed-set-0.3.43": {
       "edition": "2021"
     },
-    "tatara-closed-set-derive-0.3.41": {
+    "tatara-closed-set-derive-0.3.43": {
       "edition": "2021",
       "proc_macro": true
     },
-    "tatara-lisp-0.3.41": {
+    "tatara-lisp-0.3.43": {
       "edition": "2021"
     },
-    "tatara-lisp-derive-0.3.41": {
+    "tatara-lisp-derive-0.3.43": {
       "edition": "2021",
       "proc_macro": true
     },

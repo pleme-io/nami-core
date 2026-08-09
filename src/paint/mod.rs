@@ -117,6 +117,18 @@ pub struct DisplayList {
 }
 
 impl DisplayList {
+    /// An empty display list, constructible in `const` context.
+    ///
+    /// `const` so a host can hold a `static` empty list and hand out a
+    /// `&'static DisplayList` at zero cost — which is what makes
+    /// [`BrowserEngine::display_list`](crate::engine::BrowserEngine::display_list)
+    /// able to return a *borrow* (non-destructive) rather than an owned
+    /// value the caller must be handed by move.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { cmds: Vec::new() }
+    }
+
     /// Append a command.
     pub fn push(&mut self, c: DrawCmd) {
         self.cmds.push(c);

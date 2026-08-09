@@ -16,10 +16,30 @@
 //! A pixel-painting pure-Rust engine (namimado's `NamiNativeEngine`) runs
 //! nami-core's own DOM → CSS → layout → [`crate::paint`] pipeline and hands
 //! the resulting [`crate::paint::DisplayList`] to the host via
-//! [`BrowserEngine::take_display_list`] for GPU rendering. That method has a
-//! default empty body so the existing [`SubstrateNullEngine`] (and any
-//! engine that paints nothing or owns a native subview) stays correct
-//! without overriding it.
+//! [`BrowserEngine::display_list`] for GPU rendering. That method has a
+//! default returning a `&'static` empty list, so the existing
+//! [`SubstrateNullEngine`] (and any engine that paints nothing or owns a
+//! native subview) stays correct without overriding it.
+//!
+//! ## Why the per-frame read is a BORROW (a fixed defect class, 2026-08-09)
+//!
+//! This seam previously exposed `take_display_list(&mut self) -> DisplayList`,
+//! whose doc invited the host to call it "once per frame" while the engine
+//! `std::mem::take`s its cached list. Those two sentences cannot both hold: a
+//! list recomputed only on `navigate`/`resize` but *consumed* every frame
+//! survives exactly ONE frame. namimado shipped that pairing and the operator
+//! saw the symptom — a page "renders in a flash then goes away" (a loaded
+//! page painted for one frame, then a permanently blank content area, because
+//! `renders_pixels() == true` also suppresses the substrate-text fallback).
+//!
+//! The fix is the type, not a caller convention: the per-frame accessor hands
+//! out `&DisplayList`. **A shared borrow cannot clear the thing it borrows**,
+//! so "the frame that ate the page" has no code path through this trait. Any
+//! host may read it every frame, forever, and get the same pixels.
+//!
+//! Consequence for engine authors: build your list in `navigate`/`resize`,
+//! keep it, and return `&self.display_list`. Do not clear on read. If you
+//! need to *invalidate*, do it where the content actually changes.
 
 use url::Url;
 
@@ -113,22 +133,28 @@ pub trait BrowserEngine {
     /// its substrate-text fallback in the content rect (the null engine).
     fn renders_pixels(&self) -> bool;
 
-    /// Take the engine's current [`DisplayList`](crate::paint::DisplayList)
-    /// — the typed paint IR the host renders into GPU pixels. An engine
-    /// that builds a display list (the pure-Rust `NamiNativeEngine`)
-    /// overrides this to hand off (and clear) the list it computed on the
-    /// last `navigate`/`resize`. The default returns an empty list, so
-    /// engines that paint nothing ([`SubstrateNullEngine`]) or own their
-    /// own native subview (wry) stay correct without overriding.
+    /// Borrow the engine's current [`DisplayList`](crate::paint::DisplayList)
+    /// — the typed paint IR the host renders into GPU pixels.
     ///
-    /// "Take" semantics: the host calls this once per frame; the engine
-    /// is free to `std::mem::take` its cached list so a stale list is
-    /// never re-rendered. The list is recomputed only on
-    /// `navigate`/`resize`, never per frame.
-    fn take_display_list(&mut self) -> crate::paint::DisplayList {
-        crate::paint::DisplayList::default()
+    /// **This is the per-frame accessor, and it is deliberately a borrow.**
+    /// An engine that builds a display list (the pure-Rust `NamiNativeEngine`)
+    /// overrides this to return `&self.display_list`, computed on the last
+    /// `navigate`/`resize`. The default returns a `&'static` empty list, so
+    /// engines that paint nothing ([`SubstrateNullEngine`]) or own their own
+    /// native subview (wry) stay correct without overriding.
+    ///
+    /// A host may call this on every frame indefinitely and always get the
+    /// same content — reading cannot consume. See the module docs for the
+    /// defect class this signature makes unrepresentable.
+    fn display_list(&self) -> &crate::paint::DisplayList {
+        &EMPTY_DISPLAY_LIST
     }
 }
+
+/// The empty list every non-painting engine borrows. A `static` (not a
+/// `const`) so the borrow is genuinely `'static`: `DisplayList` owns a `Vec`
+/// and therefore has drop glue, which blocks const-promotion of a temporary.
+static EMPTY_DISPLAY_LIST: crate::paint::DisplayList = crate::paint::DisplayList::new();
 
 /// The default pure-Rust engine: paints nothing, runs nothing. The host keeps
 /// rendering the nami-core substrate text/inspector in the content rect. This
@@ -273,14 +299,59 @@ mod tests {
     }
 
     #[test]
-    fn default_take_display_list_is_empty_for_null_and_mock() {
-        // SubstrateNullEngine + MockEngine do not override
-        // take_display_list → the default empty list keeps them green.
-        let mut null = SubstrateNullEngine::new();
-        assert!(null.take_display_list().is_empty());
+    fn default_display_list_is_empty_for_null_and_mock() {
+        // SubstrateNullEngine + MockEngine do not override display_list →
+        // the default `&'static` empty list keeps them green.
+        let null = SubstrateNullEngine::new();
+        assert!(null.display_list().is_empty());
 
-        let (mut mock, _) = MockEngine::new(true);
-        assert!(mock.take_display_list().is_empty());
+        let (mock, _) = MockEngine::new(true);
+        assert!(mock.display_list().is_empty());
+    }
+
+    /// The seal on the "frame that ate the page" class: reading the display
+    /// list is NON-DESTRUCTIVE, so a host that reads every frame keeps
+    /// painting the same content forever. This is enforced by the signature
+    /// (`&self` → `&DisplayList`) — the test pins the behaviour that
+    /// signature buys, driven through `dyn BrowserEngine` exactly as a host
+    /// does.
+    #[test]
+    fn reading_the_display_list_never_consumes_it() {
+        use crate::paint::{DisplayList, DrawCmd};
+
+        struct Painting(DisplayList);
+        impl BrowserEngine for Painting {
+            fn name(&self) -> &'static str {
+                "painting"
+            }
+            fn navigate(&mut self, _u: &Url) {}
+            fn resize(&mut self, _r: ContentRect) {}
+            fn renders_pixels(&self) -> bool {
+                true
+            }
+            fn display_list(&self) -> &DisplayList {
+                &self.0
+            }
+        }
+
+        let mut list = DisplayList::new();
+        list.push(DrawCmd::Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+            color: crate::paint::Rgba::rgb8(1, 2, 3),
+        });
+        let engine: Box<dyn BrowserEngine> = Box::new(Painting(list));
+
+        // 120 consecutive "frames" — every one still paints the page.
+        for frame in 0..120 {
+            assert_eq!(
+                engine.display_list().cmds.len(),
+                1,
+                "frame {frame} lost the page — a per-frame read consumed it"
+            );
+        }
     }
 
     #[test]

@@ -49,17 +49,52 @@ pub struct TextRun {
 /// garasu quads (backgrounds/images, sRGB→linear) + typed [`TextRun`]s. No GPU
 /// state touched — the caller feeds the quads to a `QuadPipeline` and the runs to
 /// a `TextRenderer`. This is the loop mado + namimado used to each own.
+///
+/// Unscaled: input and output are the same unit. See
+/// [`display_list_to_gpu_scaled`] for the HiDPI-correct form.
 #[must_use]
 pub fn display_list_to_gpu(
     dl: &DisplayList,
     origin: [f32; 2],
     fg_fallback: [f32; 4],
 ) -> (Vec<garasu::QuadInstance>, Vec<TextRun>) {
+    display_list_to_gpu_scaled(dl, origin, 1.0, fg_fallback)
+}
+
+/// HiDPI-correct translation: a [`DisplayList`] in **logical** (CSS) pixels →
+/// garasu quads + [`TextRun`]s in **physical** (device) pixels.
+///
+/// A layout engine must lay out in CSS pixels — that is what `width: 200px`
+/// means — while a GPU surface is addressed in device pixels. On a 2× display
+/// those differ by exactly `scale`, so translating without it renders the page
+/// at half size in the top-left quadrant of its own content rect.
+///
+/// `origin` is given in **logical** units too and is scaled here, so a caller
+/// keeps ONE coordinate system (design/CSS units) and names the scale once.
+/// Font size and line height scale with everything else: a glyph rasterized at
+/// the physical size is crisp, where rasterizing at logical size and upscaling
+/// the quad is blurry.
+#[must_use]
+pub fn display_list_to_gpu_scaled(
+    dl: &DisplayList,
+    origin: [f32; 2],
+    scale: f32,
+    fg_fallback: [f32; 4],
+) -> (Vec<garasu::QuadInstance>, Vec<TextRun>) {
     use crate::paint::DrawCmd;
     use garasu::QuadInstance;
     use ishou_tokens::space::srgb_channel_to_linear as lin;
 
-    let [ox, oy] = origin;
+    // A non-finite or non-positive scale is a caller bug (a scale factor is
+    // never 0 or NaN); clamp to 1.0 so a bad value degrades to "unscaled"
+    // rather than collapsing every box to zero area or NaN-ing the vertex
+    // buffer, which would blank the window with no diagnostic.
+    let scale = if scale.is_finite() && scale > 0.0 {
+        scale
+    } else {
+        1.0
+    };
+    let [ox, oy] = [origin[0] * scale, origin[1] * scale];
     let mut quads: Vec<QuadInstance> = Vec::new();
     let mut runs: Vec<TextRun> = Vec::new();
     for cmd in &dl.cmds {
@@ -71,8 +106,8 @@ pub fn display_list_to_gpu(
                 height,
                 color,
             } => quads.push(QuadInstance {
-                pos: [ox + *x, oy + *y],
-                size: [*width, *height],
+                pos: [ox + *x * scale, oy + *y * scale],
+                size: [*width * scale, *height * scale],
                 color: [lin(color.r), lin(color.g), lin(color.b), color.a],
             }),
             DrawCmd::Image {
@@ -83,8 +118,8 @@ pub fn display_list_to_gpu(
                 placeholder,
                 ..
             } => quads.push(QuadInstance {
-                pos: [ox + *x, oy + *y],
-                size: [*width, *height],
+                pos: [ox + *x * scale, oy + *y * scale],
+                size: [*width * scale, *height * scale],
                 color: [
                     lin(placeholder.r),
                     lin(placeholder.g),
@@ -110,13 +145,13 @@ pub fn display_list_to_gpu(
                     fg_fallback
                 };
                 runs.push(TextRun {
-                    x: ox + *x,
-                    y: oy + *y,
-                    max_width: *max_width,
-                    max_height: *max_height,
+                    x: ox + *x * scale,
+                    y: oy + *y * scale,
+                    max_width: *max_width * scale,
+                    max_height: *max_height * scale,
                     text: text.clone(),
-                    font_size: *font_size,
-                    line_height: *line_height,
+                    font_size: *font_size * scale,
+                    line_height: *line_height * scale,
                     color: resolved,
                 });
             }
@@ -235,6 +270,93 @@ pub fn render_display_list_to_rgba(
 mod tests {
     use super::*;
     use crate::paint::{DrawCmd, Rgba};
+
+    fn opaque(r: f32, g: f32, b: f32) -> Rgba {
+        Rgba { r, g, b, a: 1.0 }
+    }
+
+    /// HiDPI: a layout in CSS pixels must land on a device-pixel surface
+    /// multiplied by the scale factor — position, size, origin, font size AND
+    /// line height. Getting any one of them wrong is what renders a page at
+    /// half size in the corner of its own content rect on a 2× display.
+    #[test]
+    fn scaled_translation_multiplies_every_geometric_field() {
+        let dl = DisplayList {
+            cmds: vec![
+                DrawCmd::Rect {
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 40.0,
+                    color: opaque(0.0, 1.0, 0.0),
+                },
+                DrawCmd::Text {
+                    x: 10.0,
+                    y: 20.0,
+                    max_width: 100.0,
+                    max_height: 40.0,
+                    text: "hi".into(),
+                    color: opaque(1.0, 1.0, 1.0),
+                    font_size: 16.0,
+                    line_height: 20.0,
+                },
+            ],
+        };
+        let fg = [1.0, 1.0, 1.0, 1.0];
+        // Origin is LOGICAL and is scaled too: a 56pt chrome bar is 112 device
+        // px at 2×, so the page must start there, not at 56.
+        let (quads, runs) = display_list_to_gpu_scaled(&dl, [0.0, 56.0], 2.0, fg);
+
+        assert_eq!(quads[0].pos, [20.0, 152.0], "pos = origin*s + x*s");
+        assert_eq!(quads[0].size, [200.0, 80.0], "size scales");
+
+        let r = &runs[0];
+        assert_eq!((r.x, r.y), (20.0, 152.0));
+        assert_eq!((r.max_width, r.max_height), (200.0, 80.0));
+        assert_eq!(r.font_size, 32.0, "glyphs rasterize at physical size");
+        assert_eq!(r.line_height, 40.0);
+    }
+
+    /// The unscaled entry point must stay byte-identical to the old behaviour
+    /// — it is the one mado calls today.
+    #[test]
+    fn unscaled_entry_point_is_identity() {
+        let dl = DisplayList {
+            cmds: vec![DrawCmd::Rect {
+                x: 3.0,
+                y: 4.0,
+                width: 5.0,
+                height: 6.0,
+                color: opaque(1.0, 0.0, 0.0),
+            }],
+        };
+        let fg = [1.0, 1.0, 1.0, 1.0];
+        let (a, _) = display_list_to_gpu(&dl, [0.0, 56.0], fg);
+        let (b, _) = display_list_to_gpu_scaled(&dl, [0.0, 56.0], 1.0, fg);
+        assert_eq!(a, b);
+        assert_eq!(a[0].pos, [3.0, 60.0]);
+        assert_eq!(a[0].size, [5.0, 6.0]);
+    }
+
+    /// A garbage scale degrades to unscaled rather than collapsing every box
+    /// to zero area (which would blank the window with no diagnostic).
+    #[test]
+    fn non_finite_or_zero_scale_degrades_to_unscaled() {
+        let dl = DisplayList {
+            cmds: vec![DrawCmd::Rect {
+                x: 1.0,
+                y: 1.0,
+                width: 2.0,
+                height: 2.0,
+                color: opaque(1.0, 1.0, 1.0),
+            }],
+        };
+        let fg = [1.0; 4];
+        for bad in [0.0_f32, -1.0, f32::NAN, f32::INFINITY] {
+            let (q, _) = display_list_to_gpu_scaled(&dl, [0.0, 0.0], bad, fg);
+            assert_eq!(q[0].size, [2.0, 2.0], "scale {bad} should degrade to 1.0");
+        }
+    }
 
     #[test]
     fn display_list_to_gpu_maps_rects_and_text_and_applies_origin_and_fallback() {

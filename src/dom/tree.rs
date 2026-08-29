@@ -1,5 +1,15 @@
 //! HTML parsing and document-level queries.
 
+// ★ DO NOT RENAME `tendril` / `StrTendril` / `TendrilSink` below. They are
+// servo's crates.io crate `tendril 0.4.3` — the zero-copy string type
+// html5ever re-exports — and we own none of them. Every `StrTendril` here sits
+// in a `TreeSink` signature, and implementing a foreign trait means the
+// parameter types must match the upstream declaration exactly, so there is no
+// alternative spelling available even in principle.
+//
+// Written down because an automated pass rewrote these seven occurrences into
+// prose on 2026-08-29 and the crate stopped compiling. See
+// `skip-identifier-rewrite:` at the top of CLAUDE.md.
 use html5ever::tendril::TendrilSink as _;
 use html5ever::tree_builder::TreeSink;
 use html5ever::{Attribute, local_name, namespace_url, ns, parse_document};

@@ -1,5 +1,32 @@
 # nami-core -- Shared Browser Core Library
 
+`skip-identifier-rewrite: every "tendril" in this repo is servo's crates.io
+crate tendril 0.4.3 — a foreign API path, owned by nobody here.`
+
+> **★★ `tendril` is upstream, and an automated rename already broke it once.**
+> Searching this repo for `tendril` returns 13 hits, and all 13 are one thing:
+> the crate `tendril 0.4.3`
+> (`registry+https://github.com/rust-lang/crates.io-index`, checksum
+> `d24a120c…`), servo's zero-copy string type, which html5ever re-exports as
+> `html5ever::tendril`. Six live in the two generated lockfiles, which pin a
+> real crates.io package **by name** and so cannot be edited at all. Seven live
+> in `src/dom/tree.rs`, where each `StrTendril` sits in a `TreeSink` signature —
+> implementing a foreign trait means those parameter types must match the
+> upstream declaration **exactly**, so no rename exists even in principle.
+>
+> On 2026-08-29 an automated pass rewrote all seven into prose. The result does
+> not compile (`error: expected one of ::, ;, or as, found observability`), and
+> it was reverted the same day with no substitution kept.
+>
+> The generalizable lesson, which is why this note exists rather than a silent
+> revert: **a word-level substitution cannot tell a foreign crate path from an
+> identifier we own.** Worse, this particular false positive is not merely
+> wrong but *unfixable by renaming*, because the symbol crosses a foreign trait
+> boundary — so there is no "right" new name to reach for. Before mechanically
+> rewriting any symbol here, check the lockfile source to see who owns it and
+> whether it appears in a foreign trait signature; then build, because this
+> failure mode is a hard compile error and nothing subtler.
+
 > **★★★ CSE / Knowable Construction.** This repo operates under **Constructive Substrate Engineering** — canonical specification at [`pleme-io/theory/CONSTRUCTIVE-SUBSTRATE-ENGINEERING.md`](https://github.com/pleme-io/theory/blob/main/CONSTRUCTIVE-SUBSTRATE-ENGINEERING.md). The Compounding Directive (operational rules: solve once, load-bearing fixes only, idiom-first, models stay current, direction beats velocity) is in the org-level pleme-io/CLAUDE.md ★★★ section. Read both before non-trivial changes.
 
 

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "5d4324d6b4940a82774db6f68de8f4871df32569b5cad0d3a4949dd7b05d936d",
+  "cargo_lock_sha256": "9b079605f219fbdbe4092a5f4736b9a8686adbe056abd44cfc0f8f77520fad6a",
   "manifest_sha256": {
-    "Cargo.toml": "44b498e4fc0afb0a2f637b4e1ecd25abe588487d8accfc1696af491e83ba08a8"
+    "Cargo.toml": "c54af09b84194bd27c92acc205ecb7510f2d2f60969d9553a6c54e67bd676038"
   },
   "target_resolves": {
     "base": {
@@ -106,11 +106,6 @@
           "std"
         ]
       },
-      "arrayref-0.3.9": {
-        "runtime_dependencies": [],
-        "build_dependencies": [],
-        "features": []
-      },
       "arrayvec-0.7.8": {
         "runtime_dependencies": [],
         "build_dependencies": [],
@@ -183,11 +178,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "cc-1.4.2": {
+      "cc-1.4.4": {
         "runtime_dependencies": [
           {
             "name": "find_msvc_tools",
-            "package_key": "find-msvc-tools-0.1.10",
+            "package_key": "find-msvc-tools-0.1.11",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -830,7 +825,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.4",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -863,7 +858,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "either-1.17.0": {
+      "either-1.18.0": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": [
@@ -923,7 +918,7 @@
           "std"
         ]
       },
-      "find-msvc-tools-0.1.10": {
+      "find-msvc-tools-0.1.11": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -1343,7 +1338,7 @@
         "runtime_dependencies": [
           {
             "name": "log",
-            "package_key": "log-0.4.33",
+            "package_key": "log-0.4.34",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -1385,7 +1380,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "icu_collections-2.2.0": {
+      "icu_collections-2.3.0": {
         "runtime_dependencies": [
           {
             "name": "displaydoc",
@@ -1399,7 +1394,7 @@
           },
           {
             "name": "potential_utf",
-            "package_key": "potential_utf-0.1.5",
+            "package_key": "potential_utf-0.1.6",
             "kind": "normal",
             "features": [
               "zerovec"
@@ -1445,7 +1440,7 @@
           },
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [
               "derive",
@@ -1460,7 +1455,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "icu_locale_core-2.2.0": {
+      "icu_locale_core-2.3.0": {
         "runtime_dependencies": [
           {
             "name": "displaydoc",
@@ -1474,7 +1469,7 @@
           },
           {
             "name": "litemap",
-            "package_key": "litemap-0.8.2",
+            "package_key": "litemap-0.8.3",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1484,7 +1479,7 @@
           },
           {
             "name": "tinystr",
-            "package_key": "tinystr-0.8.3",
+            "package_key": "tinystr-0.8.4",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1494,7 +1489,7 @@
           },
           {
             "name": "writeable",
-            "package_key": "writeable-0.6.3",
+            "package_key": "writeable-0.6.4",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1504,7 +1499,7 @@
           },
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1518,11 +1513,11 @@
           "zerovec"
         ]
       },
-      "icu_normalizer-2.2.0": {
+      "icu_normalizer-2.3.0": {
         "runtime_dependencies": [
           {
             "name": "icu_collections",
-            "package_key": "icu_collections-2.2.0",
+            "package_key": "icu_collections-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1532,7 +1527,7 @@
           },
           {
             "name": "icu_normalizer_data",
-            "package_key": "icu_normalizer_data-2.2.0",
+            "package_key": "icu_normalizer_data-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1542,7 +1537,7 @@
           },
           {
             "name": "icu_provider",
-            "package_key": "icu_provider-2.2.0",
+            "package_key": "icu_provider-2.3.1",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1562,7 +1557,7 @@
           },
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1576,16 +1571,26 @@
           "compiled_data"
         ]
       },
-      "icu_normalizer_data-2.2.0": {
+      "icu_normalizer_data-2.3.0": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
       },
-      "icu_properties-2.2.0": {
+      "icu_properties-2.3.0": {
         "runtime_dependencies": [
           {
+            "name": "displaydoc",
+            "package_key": "displaydoc-0.2.7",
+            "kind": "normal",
+            "features": [],
+            "uses_default_features": false,
+            "optional": false,
+            "target": null,
+            "tree": "host"
+          },
+          {
             "name": "icu_collections",
-            "package_key": "icu_collections-2.2.0",
+            "package_key": "icu_collections-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1595,7 +1600,7 @@
           },
           {
             "name": "icu_locale_core",
-            "package_key": "icu_locale_core-2.2.0",
+            "package_key": "icu_locale_core-2.3.0",
             "kind": "normal",
             "features": [
               "zerovec"
@@ -1607,7 +1612,7 @@
           },
           {
             "name": "icu_properties_data",
-            "package_key": "icu_properties_data-2.2.0",
+            "package_key": "icu_properties_data-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1617,7 +1622,7 @@
           },
           {
             "name": "icu_provider",
-            "package_key": "icu_provider-2.2.0",
+            "package_key": "icu_provider-2.3.1",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1627,7 +1632,7 @@
           },
           {
             "name": "zerotrie",
-            "package_key": "zerotrie-0.2.4",
+            "package_key": "zerotrie-0.2.5",
             "kind": "normal",
             "features": [
               "yoke",
@@ -1640,7 +1645,7 @@
           },
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [
               "derive",
@@ -1657,12 +1662,12 @@
           "compiled_data"
         ]
       },
-      "icu_properties_data-2.2.0": {
+      "icu_properties_data-2.3.0": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
       },
-      "icu_provider-2.2.0": {
+      "icu_provider-2.3.1": {
         "runtime_dependencies": [
           {
             "name": "displaydoc",
@@ -1676,7 +1681,7 @@
           },
           {
             "name": "icu_locale_core",
-            "package_key": "icu_locale_core-2.2.0",
+            "package_key": "icu_locale_core-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1686,7 +1691,7 @@
           },
           {
             "name": "writeable",
-            "package_key": "writeable-0.6.3",
+            "package_key": "writeable-0.6.4",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1720,7 +1725,7 @@
           },
           {
             "name": "zerotrie",
-            "package_key": "zerotrie-0.2.4",
+            "package_key": "zerotrie-0.2.5",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1730,7 +1735,7 @@
           },
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [
               "derive"
@@ -1792,7 +1797,7 @@
         "runtime_dependencies": [
           {
             "name": "icu_normalizer",
-            "package_key": "icu_normalizer-2.2.0",
+            "package_key": "icu_normalizer-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1802,7 +1807,7 @@
           },
           {
             "name": "icu_properties",
-            "package_key": "icu_properties-2.2.0",
+            "package_key": "icu_properties-2.3.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1816,7 +1821,7 @@
           "compiled_data"
         ]
       },
-      "indexmap-2.14.0": {
+      "indexmap-2.14.1": {
         "runtime_dependencies": [
           {
             "name": "equivalent",
@@ -1860,7 +1865,7 @@
         "runtime_dependencies": [
           {
             "name": "either",
-            "package_key": "either-1.17.0",
+            "package_key": "either-1.18.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1880,7 +1885,7 @@
         "runtime_dependencies": [
           {
             "name": "either",
-            "package_key": "either-1.17.0",
+            "package_key": "either-1.18.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -1983,7 +1988,7 @@
           },
           {
             "name": "indexmap",
-            "package_key": "indexmap-2.14.0",
+            "package_key": "indexmap-2.14.1",
             "kind": "normal",
             "features": [
               "serde"
@@ -2119,7 +2124,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "litemap-0.8.2": {
+      "litemap-0.8.3": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -2143,7 +2148,7 @@
           "default"
         ]
       },
-      "log-0.4.33": {
+      "log-0.4.34": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -2157,7 +2162,7 @@
         "runtime_dependencies": [
           {
             "name": "log",
-            "package_key": "log-0.4.33",
+            "package_key": "log-0.4.34",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2329,7 +2334,7 @@
           },
           {
             "name": "log",
-            "package_key": "log-0.4.33",
+            "package_key": "log-0.4.34",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2564,7 +2569,7 @@
           },
           {
             "name": "rand",
-            "package_key": "rand-0.8.7",
+            "package_key": "rand-0.8.8",
             "kind": "normal",
             "features": [
               "small_rng"
@@ -2704,11 +2709,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "pleme-nami-core-0.1.16": {
+      "pleme-nami-core-0.1.17": {
         "runtime_dependencies": [
           {
             "name": "blake3",
-            "package_key": "blake3-1.8.6",
+            "package_key": "blake3-1.8.7",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2832,7 +2837,7 @@
           },
           {
             "name": "tatara_lisp",
-            "package_key": "tatara-lisp-0.3.43",
+            "package_key": "tatara-lisp-0.3.52",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -2879,11 +2884,11 @@
           "lisp"
         ]
       },
-      "potential_utf-0.1.5": {
+      "potential_utf-0.1.6": {
         "runtime_dependencies": [
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -3093,7 +3098,7 @@
           "proc-macro"
         ]
       },
-      "rand-0.8.7": {
+      "rand-0.8.8": {
         "runtime_dependencies": [
           {
             "name": "libc",
@@ -3277,7 +3282,7 @@
         "runtime_dependencies": [
           {
             "name": "either",
-            "package_key": "either-1.17.0",
+            "package_key": "either-1.18.0",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -3612,7 +3617,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.4",
             "kind": "normal",
             "features": [
               "clone-impls",
@@ -4010,7 +4015,7 @@
           "visit-mut"
         ]
       },
-      "syn-3.0.3": {
+      "syn-3.0.4": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4048,6 +4053,7 @@
           "clone-impls",
           "default",
           "derive",
+          "extra-traits",
           "full",
           "parsing",
           "printing",
@@ -4146,11 +4152,11 @@
           "taffy_tree"
         ]
       },
-      "tatara-closed-set-0.3.43": {
+      "tatara-closed-set-0.3.52": {
         "runtime_dependencies": [
           {
             "name": "tatara_closed_set_derive",
-            "package_key": "tatara-closed-set-derive-0.3.43",
+            "package_key": "tatara-closed-set-derive-0.3.52",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4162,7 +4168,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-closed-set-derive-0.3.43": {
+      "tatara-closed-set-derive-0.3.52": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4200,11 +4206,11 @@
         "build_dependencies": [],
         "features": []
       },
-      "tatara-lisp-0.3.43": {
+      "tatara-lisp-0.3.52": {
         "runtime_dependencies": [
           {
             "name": "blake3",
-            "package_key": "blake3-1.8.6",
+            "package_key": "blake3-1.8.7",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4236,7 +4242,7 @@
           },
           {
             "name": "tatara_closed_set",
-            "package_key": "tatara-closed-set-0.3.43",
+            "package_key": "tatara-closed-set-0.3.52",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4246,7 +4252,7 @@
           },
           {
             "name": "tatara_lisp_derive",
-            "package_key": "tatara-lisp-derive-0.3.43",
+            "package_key": "tatara-lisp-derive-0.3.52",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4270,7 +4276,7 @@
           "default"
         ]
       },
-      "tatara-lisp-derive-0.3.43": {
+      "tatara-lisp-derive-0.3.52": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -4440,7 +4446,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.4",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -4452,7 +4458,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "tinystr-0.8.3": {
+      "tinystr-0.8.4": {
         "runtime_dependencies": [
           {
             "name": "displaydoc",
@@ -4466,7 +4472,7 @@
           },
           {
             "name": "zerovec",
-            "package_key": "zerovec-0.11.6",
+            "package_key": "zerovec-0.11.8",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -4563,7 +4569,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.4",
             "kind": "normal",
             "features": [
               "full"
@@ -4823,7 +4829,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "wasm-encoder-0.255.0": {
+      "wasm-encoder-0.258.0": {
         "runtime_dependencies": [
           {
             "name": "leb128fmt",
@@ -4842,7 +4848,7 @@
           "std"
         ]
       },
-      "wasmparser-0.255.0": {
+      "wasmparser-0.258.0": {
         "runtime_dependencies": [
           {
             "name": "bitflags",
@@ -4872,7 +4878,7 @@
           "std"
         ]
       },
-      "wast-255.0.0": {
+      "wast-258.0.0": {
         "runtime_dependencies": [
           {
             "name": "bumpalo",
@@ -4916,7 +4922,7 @@
           },
           {
             "name": "wasm_encoder",
-            "package_key": "wasm-encoder-0.255.0",
+            "package_key": "wasm-encoder-0.258.0",
             "kind": "normal",
             "features": [
               "std"
@@ -4933,11 +4939,11 @@
           "wasm-module"
         ]
       },
-      "wat-1.255.0": {
+      "wat-1.258.0": {
         "runtime_dependencies": [
           {
             "name": "wast",
-            "package_key": "wast-255.0.0",
+            "package_key": "wast-258.0.0",
             "kind": "normal",
             "features": [
               "wasm-module"
@@ -4954,7 +4960,7 @@
           "default"
         ]
       },
-      "writeable-0.6.3": {
+      "writeable-0.6.4": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -5180,7 +5186,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "zerotrie-0.2.4": {
+      "zerotrie-0.2.5": {
         "runtime_dependencies": [
           {
             "name": "displaydoc",
@@ -5221,7 +5227,7 @@
           "zerofrom"
         ]
       },
-      "zerovec-0.11.6": {
+      "zerovec-0.11.8": {
         "runtime_dependencies": [
           {
             "name": "yoke",
@@ -5245,7 +5251,7 @@
           },
           {
             "name": "zerovec_derive",
-            "package_key": "zerovec-derive-0.11.3",
+            "package_key": "zerovec-derive-0.11.6",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -5260,7 +5266,7 @@
           "yoke"
         ]
       },
-      "zerovec-derive-0.11.3": {
+      "zerovec-derive-0.11.6": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -5284,7 +5290,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-2.0.119",
+            "package_key": "syn-3.0.4",
             "kind": "normal",
             "features": [
               "extra-traits"
@@ -5307,18 +5313,8 @@
     "targets": {
       "aarch64-apple-darwin": {
         "overrides": {
-          "blake3-1.8.6": {
+          "blake3-1.8.7": {
             "runtime_dependencies": [
-              {
-                "name": "arrayref",
-                "package_key": "arrayref-0.3.9",
-                "kind": "normal",
-                "features": [],
-                "uses_default_features": true,
-                "optional": false,
-                "target": null,
-                "tree": "target"
-              },
               {
                 "name": "arrayvec",
                 "package_key": "arrayvec-0.7.8",
@@ -5353,7 +5349,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.2",
+                "package_key": "cc-1.4.4",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5488,18 +5484,8 @@
       },
       "aarch64-unknown-linux-gnu": {
         "overrides": {
-          "blake3-1.8.6": {
+          "blake3-1.8.7": {
             "runtime_dependencies": [
-              {
-                "name": "arrayref",
-                "package_key": "arrayref-0.3.9",
-                "kind": "normal",
-                "features": [],
-                "uses_default_features": true,
-                "optional": false,
-                "target": null,
-                "tree": "target"
-              },
               {
                 "name": "arrayvec",
                 "package_key": "arrayvec-0.7.8",
@@ -5534,7 +5520,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.2",
+                "package_key": "cc-1.4.4",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5712,18 +5698,8 @@
       },
       "aarch64-unknown-linux-musl": {
         "overrides": {
-          "blake3-1.8.6": {
+          "blake3-1.8.7": {
             "runtime_dependencies": [
-              {
-                "name": "arrayref",
-                "package_key": "arrayref-0.3.9",
-                "kind": "normal",
-                "features": [],
-                "uses_default_features": true,
-                "optional": false,
-                "target": null,
-                "tree": "target"
-              },
               {
                 "name": "arrayvec",
                 "package_key": "arrayvec-0.7.8",
@@ -5758,7 +5734,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.2",
+                "package_key": "cc-1.4.4",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -5936,18 +5912,8 @@
       },
       "x86_64-apple-darwin": {
         "overrides": {
-          "blake3-1.8.6": {
+          "blake3-1.8.7": {
             "runtime_dependencies": [
-              {
-                "name": "arrayref",
-                "package_key": "arrayref-0.3.9",
-                "kind": "normal",
-                "features": [],
-                "uses_default_features": true,
-                "optional": false,
-                "target": null,
-                "tree": "target"
-              },
               {
                 "name": "arrayvec",
                 "package_key": "arrayvec-0.7.8",
@@ -5980,7 +5946,7 @@
               },
               {
                 "name": "cpufeatures",
-                "package_key": "cpufeatures-0.3.0",
+                "package_key": "cpufeatures-0.3.1",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -5992,7 +5958,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.2",
+                "package_key": "cc-1.4.4",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6011,7 +5977,7 @@
             "build_dependencies": [],
             "features": []
           },
-          "cpufeatures-0.3.0": {
+          "cpufeatures-0.3.1": {
             "runtime_dependencies": [],
             "build_dependencies": [],
             "features": []
@@ -6091,18 +6057,8 @@
       },
       "x86_64-unknown-linux-gnu": {
         "overrides": {
-          "blake3-1.8.6": {
+          "blake3-1.8.7": {
             "runtime_dependencies": [
-              {
-                "name": "arrayref",
-                "package_key": "arrayref-0.3.9",
-                "kind": "normal",
-                "features": [],
-                "uses_default_features": true,
-                "optional": false,
-                "target": null,
-                "tree": "target"
-              },
               {
                 "name": "arrayvec",
                 "package_key": "arrayvec-0.7.8",
@@ -6135,7 +6091,7 @@
               },
               {
                 "name": "cpufeatures",
-                "package_key": "cpufeatures-0.3.0",
+                "package_key": "cpufeatures-0.3.1",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -6147,7 +6103,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.2",
+                "package_key": "cc-1.4.4",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6166,7 +6122,7 @@
             "build_dependencies": [],
             "features": []
           },
-          "cpufeatures-0.3.0": {
+          "cpufeatures-0.3.1": {
             "runtime_dependencies": [],
             "build_dependencies": [],
             "features": []
@@ -6289,18 +6245,8 @@
       },
       "x86_64-unknown-linux-musl": {
         "overrides": {
-          "blake3-1.8.6": {
+          "blake3-1.8.7": {
             "runtime_dependencies": [
-              {
-                "name": "arrayref",
-                "package_key": "arrayref-0.3.9",
-                "kind": "normal",
-                "features": [],
-                "uses_default_features": true,
-                "optional": false,
-                "target": null,
-                "tree": "target"
-              },
               {
                 "name": "arrayvec",
                 "package_key": "arrayvec-0.7.8",
@@ -6333,7 +6279,7 @@
               },
               {
                 "name": "cpufeatures",
-                "package_key": "cpufeatures-0.3.0",
+                "package_key": "cpufeatures-0.3.1",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -6345,7 +6291,7 @@
             "build_dependencies": [
               {
                 "name": "cc",
-                "package_key": "cc-1.4.2",
+                "package_key": "cc-1.4.4",
                 "kind": "build",
                 "features": [],
                 "uses_default_features": true,
@@ -6364,7 +6310,7 @@
             "build_dependencies": [],
             "features": []
           },
-          "cpufeatures-0.3.0": {
+          "cpufeatures-0.3.1": {
             "runtime_dependencies": [],
             "build_dependencies": [],
             "features": []
@@ -6501,9 +6447,6 @@
     "anstyle-1.0.14": {
       "edition": "2021"
     },
-    "arrayref-0.3.9": {
-      "edition": "2015"
-    },
     "arrayvec-0.7.8": {
       "edition": "2018"
     },
@@ -6519,7 +6462,7 @@
     "bitflags-2.13.1": {
       "edition": "2021"
     },
-    "blake3-1.8.6": {
+    "blake3-1.8.7": {
       "edition": "2024",
       "build_script": "build.rs"
     },
@@ -6532,7 +6475,7 @@
     "cast-0.3.0": {
       "edition": "2018"
     },
-    "cc-1.4.2": {
+    "cc-1.4.4": {
       "edition": "2021"
     },
     "cfg-if-1.0.4": {
@@ -6574,7 +6517,7 @@
     "cpufeatures-0.2.17": {
       "edition": "2018"
     },
-    "cpufeatures-0.3.0": {
+    "cpufeatures-0.3.1": {
       "edition": "2024"
     },
     "criterion-0.7.0": {
@@ -6632,7 +6575,7 @@
     "dtoa-short-0.3.5": {
       "edition": "2015"
     },
-    "either-1.17.0": {
+    "either-1.18.0": {
       "edition": "2021"
     },
     "equivalent-1.0.2": {
@@ -6644,7 +6587,7 @@
     "fastrand-2.5.0": {
       "edition": "2018"
     },
-    "find-msvc-tools-0.1.10": {
+    "find-msvc-tools-0.1.11": {
       "edition": "2021"
     },
     "fnv-1.0.7": {
@@ -6693,28 +6636,28 @@
     "html5ever-0.29.1": {
       "edition": "2021"
     },
-    "icu_collections-2.2.0": {
-      "edition": "2021"
+    "icu_collections-2.3.0": {
+      "edition": "2024"
     },
-    "icu_locale_core-2.2.0": {
-      "edition": "2021"
+    "icu_locale_core-2.3.0": {
+      "edition": "2024"
     },
-    "icu_normalizer-2.2.0": {
-      "edition": "2021"
+    "icu_normalizer-2.3.0": {
+      "edition": "2024"
     },
-    "icu_normalizer_data-2.2.0": {
-      "edition": "2021",
+    "icu_normalizer_data-2.3.0": {
+      "edition": "2024",
       "build_script": "build.rs"
     },
-    "icu_properties-2.2.0": {
-      "edition": "2021"
+    "icu_properties-2.3.0": {
+      "edition": "2024"
     },
-    "icu_properties_data-2.2.0": {
-      "edition": "2021",
+    "icu_properties_data-2.3.0": {
+      "edition": "2024",
       "build_script": "build.rs"
     },
-    "icu_provider-2.2.0": {
-      "edition": "2021"
+    "icu_provider-2.3.1": {
+      "edition": "2024"
     },
     "idna-1.1.0": {
       "edition": "2018"
@@ -6722,7 +6665,7 @@
     "idna_adapter-1.2.2": {
       "edition": "2024"
     },
-    "indexmap-2.14.0": {
+    "indexmap-2.14.1": {
       "edition": "2024"
     },
     "itertools-0.10.5": {
@@ -6760,13 +6703,13 @@
     "linux-raw-sys-0.12.1": {
       "edition": "2021"
     },
-    "litemap-0.8.2": {
+    "litemap-0.8.3": {
       "edition": "2021"
     },
     "lock_api-0.4.14": {
       "edition": "2021"
     },
-    "log-0.4.33": {
+    "log-0.4.34": {
       "edition": "2021"
     },
     "mac-0.1.1": {
@@ -6869,14 +6812,14 @@
     "pin-project-lite-0.2.17": {
       "edition": "2018"
     },
-    "pleme-nami-core-0.1.16": {
+    "pleme-nami-core-0.1.17": {
       "edition": "2024",
       "lib_target": {
         "name": "nami_core",
         "path": "src/lib.rs"
       }
     },
-    "potential_utf-0.1.5": {
+    "potential_utf-0.1.6": {
       "edition": "2021"
     },
     "ppv-lite86-0.2.21": {
@@ -6899,7 +6842,7 @@
       "edition": "2021",
       "build_script": "build.rs"
     },
-    "rand-0.8.7": {
+    "rand-0.8.8": {
       "edition": "2018"
     },
     "rand-0.9.5": {
@@ -7014,7 +6957,7 @@
     "syn-2.0.119": {
       "edition": "2021"
     },
-    "syn-3.0.3": {
+    "syn-3.0.4": {
       "edition": "2021"
     },
     "synstructure-0.13.2": {
@@ -7023,17 +6966,17 @@
     "taffy-0.7.7": {
       "edition": "2021"
     },
-    "tatara-closed-set-0.3.43": {
+    "tatara-closed-set-0.3.52": {
       "edition": "2021"
     },
-    "tatara-closed-set-derive-0.3.43": {
+    "tatara-closed-set-derive-0.3.52": {
       "edition": "2021",
       "proc_macro": true
     },
-    "tatara-lisp-0.3.43": {
+    "tatara-lisp-0.3.52": {
       "edition": "2021"
     },
-    "tatara-lisp-derive-0.3.43": {
+    "tatara-lisp-derive-0.3.52": {
       "edition": "2021",
       "proc_macro": true
     },
@@ -7051,7 +6994,7 @@
       "edition": "2021",
       "proc_macro": true
     },
-    "tinystr-0.8.3": {
+    "tinystr-0.8.4": {
       "edition": "2021"
     },
     "tinytemplate-1.2.1": {
@@ -7125,19 +7068,19 @@
     "walkdir-2.5.0": {
       "edition": "2018"
     },
-    "wasm-encoder-0.255.0": {
+    "wasm-encoder-0.258.0": {
       "edition": "2024"
     },
-    "wasmparser-0.255.0": {
+    "wasmparser-0.258.0": {
       "edition": "2024"
     },
-    "wast-255.0.0": {
+    "wast-258.0.0": {
       "edition": "2024"
     },
-    "wat-1.255.0": {
+    "wat-1.258.0": {
       "edition": "2024"
     },
-    "writeable-0.6.3": {
+    "writeable-0.6.4": {
       "edition": "2021"
     },
     "yoke-0.8.3": {
@@ -7162,13 +7105,13 @@
       "edition": "2021",
       "proc_macro": true
     },
-    "zerotrie-0.2.4": {
+    "zerotrie-0.2.5": {
       "edition": "2021"
     },
-    "zerovec-0.11.6": {
+    "zerovec-0.11.8": {
       "edition": "2021"
     },
-    "zerovec-derive-0.11.3": {
+    "zerovec-derive-0.11.6": {
       "edition": "2021",
       "proc_macro": true
     },

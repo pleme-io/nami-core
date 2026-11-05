@@ -43,7 +43,7 @@ use tatara_lisp::DeriveTataraDomain;
 
 pub mod signature;
 pub use signature::{
-    canonical_bytes, canonical_hash, SignatureBundle, SignedExtension, Trustdb,
+    canonical_address, SignatureBundle, SignedExtension, Trustdb,
     VerificationError, VerificationStatus,
 };
 #[cfg(feature = "signatures")]

@@ -833,6 +833,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-hex"
+version = "1.19.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e59eef12462b0f9b0a3620219be5d639afd79fe39dff0a42c3997061f9298b4"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.2.17",
+ "proptest",
+ "serde_core",
+]
+
+[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3978,6 +3990,7 @@ dependencies = [
  "sha2",
  "shikumi",
  "taffy",
+ "tameshi",
  "tatara-eval",
  "tatara-lisp",
  "thiserror 2.0.20",
@@ -5429,6 +5442,21 @@ dependencies = [
  "grid",
  "serde",
  "slotmap",
+]
+
+[[package]]
+name = "tameshi"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "660f8d93cdf7c1ff43027c37e076ccbf6a8624354903fdde35c66a759e1820c2"
+dependencies = [
+ "blake3",
+ "const-hex",
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "zeroize",
 ]
 
 [[package]]

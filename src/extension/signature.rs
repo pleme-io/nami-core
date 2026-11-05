@@ -29,9 +29,9 @@
 //!
 //! Canonical form for signing/verifying:
 //!
-//! 1. Serialize `ExtensionSpec` to JSON with keys in sorted order.
-//! 2. BLAKE3 the bytes.
-//! 3. Sign / verify the 32-byte hash.
+//! 1. Serialize `ExtensionSpec` to tameshi's canonical JSON (sorted keys, compact).
+//! 2. BLAKE3 the bytes: the spec's `b3:` content address.
+//! 3. Sign / verify the 32-byte hash. A spec with no canonical form is refused.
 //!
 //! A signature therefore covers every field that survives round-
 //! trip through serde_json; the `enabled` bool, rules, permissions,
@@ -39,6 +39,7 @@
 
 use super::ExtensionSpec;
 use serde::{Deserialize, Serialize};
+use tameshi::content_address::ContentAddress;
 
 /// Signature envelope attached to an extension bundle.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -106,53 +107,18 @@ pub mod base64_error {
     impl std::error::Error for Base64DecodeError {}
 }
 
-/// Canonical bytes used as the signing preimage. Sorted-key JSON
-/// serialization of the spec, then BLAKE3-hashed to 32 bytes.
+/// The content address of a spec: BLAKE3 over its sorted-key canonical JSON,
+/// printed as `b3:<hex>`.
 ///
-/// Stable across every runtime that produces the same JSON shape;
-/// the sort is alphabetical by field name at every nesting level.
-#[must_use]
-pub fn canonical_bytes(spec: &ExtensionSpec) -> [u8; 32] {
-    let json = canonical_json(spec).unwrap_or_else(|_| serde_json::Value::Null);
-    let bytes = serde_json::to_vec(&json).unwrap_or_default();
-    *blake3::hash(&bytes).as_bytes()
+/// # Errors
+///
+/// Returns [`VerificationError::Canonicalize`] when the spec has no canonical form.
+pub fn canonical_address(spec: &ExtensionSpec) -> Result<ContentAddress, VerificationError> {
+    address_of(spec)
 }
 
-fn canonical_json(spec: &ExtensionSpec) -> Result<serde_json::Value, VerificationError> {
-    // serde_json::Map preserves insertion order; we build a new map
-    // by sorted-key inserts over the original.
-    let raw = serde_json::to_value(spec)
-        .map_err(|e| VerificationError::Canonicalize(e.to_string()))?;
-    Ok(sort_value(raw))
-}
-
-fn sort_value(v: serde_json::Value) -> serde_json::Value {
-    match v {
-        serde_json::Value::Object(map) => {
-            let mut keys: Vec<String> = map.keys().cloned().collect();
-            keys.sort();
-            let mut out = serde_json::Map::with_capacity(keys.len());
-            for k in keys {
-                let v = map.get(&k).cloned().unwrap_or(serde_json::Value::Null);
-                out.insert(k, sort_value(v));
-            }
-            serde_json::Value::Object(out)
-        }
-        serde_json::Value::Array(items) => {
-            // Arrays keep order — semantic meaning in most of our
-            // fields (rules, permissions) depends on it.
-            serde_json::Value::Array(items.into_iter().map(sort_value).collect())
-        }
-        other => other,
-    }
-}
-
-/// BLAKE3 content hash of the canonical form, 128 bits → 26-char
-/// base32 lowercase. Same convention as tameshi/sekiban.
-#[must_use]
-pub fn canonical_hash(spec: &ExtensionSpec) -> String {
-    let bytes = canonical_bytes(spec);
-    super::base32_16(&bytes[..16])
+fn address_of<T: Serialize + ?Sized>(value: &T) -> Result<ContentAddress, VerificationError> {
+    ContentAddress::of_json(value).map_err(|e| VerificationError::Canonicalize(e.to_string()))
 }
 
 /// Result of verifying a signed extension.
@@ -232,20 +198,26 @@ mod crypto {
         SigningKey::from_bytes(seed)
     }
 
-    /// Sign an extension spec. Returns a SignatureBundle with the
+    /// Sign an extension spec. Returns a `SignatureBundle` with the
     /// public key + signature base64-encoded.
-    #[must_use]
-    pub fn sign(spec: &ExtensionSpec, key: &SigningKey) -> SignatureBundle {
-        let digest = canonical_bytes(spec);
-        let sig: Signature = key.sign(&digest);
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VerificationError::Canonicalize`] when the spec has no canonical form.
+    pub fn sign(
+        spec: &ExtensionSpec,
+        key: &SigningKey,
+    ) -> Result<SignatureBundle, VerificationError> {
+        let digest = canonical_address(spec)?;
+        let sig: Signature = key.sign(digest.as_bytes());
         let pub_bytes = key.verifying_key().to_bytes();
-        SignatureBundle {
+        Ok(SignatureBundle {
             algorithm: "ed25519".into(),
             public_key: B64.encode(pub_bytes),
             signature: B64.encode(sig.to_bytes()),
             signed_by: None,
             signed_at: None,
-        }
+        })
     }
 
     /// Verify a signed extension against a trust store.
@@ -259,12 +231,12 @@ mod crypto {
             ));
         }
 
-        let pub_bytes = B64
-            .decode(&signed.signature.public_key)
-            .map_err(|e| VerificationError::Base64Decode {
+        let pub_bytes = B64.decode(&signed.signature.public_key).map_err(|e| {
+            VerificationError::Base64Decode {
                 field: "public_key",
                 source: base64_error::Base64DecodeError(e.to_string()),
-            })?;
+            }
+        })?;
         if pub_bytes.len() != 32 {
             return Err(VerificationError::BadPublicKeyLength(pub_bytes.len()));
         }
@@ -272,15 +244,15 @@ mod crypto {
             .as_slice()
             .try_into()
             .expect("length checked above");
-        let verifying = VerifyingKey::from_bytes(&pub_arr)
-            .map_err(|_| VerificationError::SignatureMismatch)?;
+        let verifying =
+            VerifyingKey::from_bytes(&pub_arr).map_err(|_| VerificationError::SignatureMismatch)?;
 
-        let sig_bytes = B64
-            .decode(&signed.signature.signature)
-            .map_err(|e| VerificationError::Base64Decode {
+        let sig_bytes = B64.decode(&signed.signature.signature).map_err(|e| {
+            VerificationError::Base64Decode {
                 field: "signature",
                 source: base64_error::Base64DecodeError(e.to_string()),
-            })?;
+            }
+        })?;
         if sig_bytes.len() != 64 {
             return Err(VerificationError::BadSignatureLength(sig_bytes.len()));
         }
@@ -290,8 +262,8 @@ mod crypto {
             .expect("length checked above");
         let sig = Signature::from_bytes(&sig_arr);
 
-        let digest = canonical_bytes(&signed.spec);
-        if verifying.verify(&digest, &sig).is_err() {
+        let digest = canonical_address(&signed.spec)?;
+        if verifying.verify(digest.as_bytes(), &sig).is_err() {
             return Err(VerificationError::SignatureMismatch);
         }
 
@@ -302,7 +274,9 @@ mod crypto {
                 signed_by: signed.signature.signed_by.clone(),
             }
         } else {
-            VerificationStatus::ValidButUntrusted { public_key_b64: pk_b64 }
+            VerificationStatus::ValidButUntrusted {
+                public_key_b64: pk_b64,
+            }
         })
     }
 }
@@ -340,31 +314,73 @@ mod tests {
         }
     }
 
+    const GOLDEN_SAMPLE_ADDRESS: &str =
+        "b3:a2d4334dabbd08eae33844b7471a9723482bcf5cfeb49fb336f6643c51f609a5";
+
     #[test]
-    fn canonical_bytes_is_stable() {
-        let s = sample_spec();
-        let a = canonical_bytes(&s);
-        let b = canonical_bytes(&s);
-        assert_eq!(a, b);
+    fn canonical_address_golden_vector() {
+        assert_eq!(
+            canonical_address(&sample_spec()).unwrap().to_b3(),
+            GOLDEN_SAMPLE_ADDRESS
+        );
     }
 
     #[test]
-    fn canonical_bytes_changes_on_mutation() {
+    fn canonical_address_changes_on_mutation() {
         let s = sample_spec();
-        let a = canonical_bytes(&s);
         let mut s2 = s.clone();
         s2.rules.push("dark-reader/injected".into());
-        let b = canonical_bytes(&s2);
-        assert_ne!(a, b);
+        assert_ne!(
+            canonical_address(&s).unwrap(),
+            canonical_address(&s2).unwrap()
+        );
     }
 
     #[test]
-    fn canonical_hash_matches_pleme_io_attestation_shape() {
-        let h = canonical_hash(&sample_spec());
-        assert_eq!(h.len(), 26);
-        for ch in h.chars() {
-            assert!(ch.is_ascii_lowercase() || ch.is_ascii_digit());
+    fn canonical_address_ignores_field_declaration_order() {
+        #[derive(Serialize)]
+        struct Forward {
+            name: &'static str,
+            enabled: bool,
+            rules: Vec<&'static str>,
         }
+        #[derive(Serialize)]
+        struct Reversed {
+            rules: Vec<&'static str>,
+            enabled: bool,
+            name: &'static str,
+        }
+        let a = address_of(&Forward {
+            name: "x",
+            enabled: true,
+            rules: vec!["r"],
+        })
+        .unwrap();
+        let b = address_of(&Reversed {
+            rules: vec!["r"],
+            enabled: true,
+            name: "x",
+        })
+        .unwrap();
+        assert_eq!(a, b);
+        let spec_value = serde_json::to_value(sample_spec()).unwrap();
+        assert_eq!(
+            address_of(&spec_value).unwrap().to_b3(),
+            GOLDEN_SAMPLE_ADDRESS
+        );
+    }
+
+    #[test]
+    fn failed_serialization_is_refused_not_hashed() {
+        struct Broken;
+        impl Serialize for Broken {
+            fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+                Err(serde::ser::Error::custom("broken"))
+            }
+        }
+        let err = address_of(&Broken).unwrap_err();
+        assert!(matches!(err, VerificationError::Canonicalize(_)));
+        assert!(address_of(&f64::NAN).is_err());
     }
 
     #[test]
@@ -419,8 +435,11 @@ mod tests {
         fn sign_verify_roundtrips() {
             let key = fresh_key();
             let spec = sample_spec();
-            let bundle = sign(&spec, &key);
-            let signed = SignedExtension { spec, signature: bundle };
+            let bundle = sign(&spec, &key).unwrap();
+            let signed = SignedExtension {
+                spec,
+                signature: bundle,
+            };
 
             let mut trust = Trustdb::new();
             trust.trust(signed.signature.public_key.clone());
@@ -437,8 +456,11 @@ mod tests {
         fn verify_with_untrusted_key_reports_valid_but_untrusted() {
             let key = fresh_key();
             let spec = sample_spec();
-            let bundle = sign(&spec, &key);
-            let signed = SignedExtension { spec, signature: bundle };
+            let bundle = sign(&spec, &key).unwrap();
+            let signed = SignedExtension {
+                spec,
+                signature: bundle,
+            };
             // Empty trust store.
             let trust = Trustdb::new();
             match verify(&signed, &trust).unwrap() {
@@ -451,11 +473,14 @@ mod tests {
         fn verify_rejects_tampered_spec() {
             let key = fresh_key();
             let spec = sample_spec();
-            let bundle = sign(&spec, &key);
+            let bundle = sign(&spec, &key).unwrap();
             // Mutate the spec AFTER signing.
             let mut tampered = spec.clone();
             tampered.rules.push("evil/rule".into());
-            let signed = SignedExtension { spec: tampered, signature: bundle };
+            let signed = SignedExtension {
+                spec: tampered,
+                signature: bundle,
+            };
             let trust = Trustdb::new();
             let err = verify(&signed, &trust).unwrap_err();
             assert!(matches!(err, VerificationError::SignatureMismatch));
@@ -465,7 +490,7 @@ mod tests {
         fn verify_rejects_wrong_key() {
             let attacker = signing_key_from_seed(&[99u8; 32]);
             let spec = sample_spec();
-            let mut bundle = sign(&spec, &attacker);
+            let mut bundle = sign(&spec, &attacker).unwrap();
 
             // Swap the public_key field so it doesn't match the
             // actual signer — the signature now verifies against a
@@ -478,7 +503,10 @@ mod tests {
             };
             bundle.public_key = bystander_pub;
 
-            let signed = SignedExtension { spec, signature: bundle };
+            let signed = SignedExtension {
+                spec,
+                signature: bundle,
+            };
             let trust = Trustdb::new();
             let err = verify(&signed, &trust).unwrap_err();
             assert!(matches!(err, VerificationError::SignatureMismatch));
@@ -488,9 +516,12 @@ mod tests {
         fn verify_rejects_bad_algorithm() {
             let key = fresh_key();
             let spec = sample_spec();
-            let mut bundle = sign(&spec, &key);
+            let mut bundle = sign(&spec, &key).unwrap();
             bundle.algorithm = "rsa".into();
-            let signed = SignedExtension { spec, signature: bundle };
+            let signed = SignedExtension {
+                spec,
+                signature: bundle,
+            };
             let err = verify(&signed, &Trustdb::new()).unwrap_err();
             assert!(matches!(err, VerificationError::UnknownAlgorithm(_)));
         }
@@ -499,9 +530,12 @@ mod tests {
         fn verify_rejects_malformed_base64() {
             let key = fresh_key();
             let spec = sample_spec();
-            let mut bundle = sign(&spec, &key);
+            let mut bundle = sign(&spec, &key).unwrap();
             bundle.signature = "not-valid-base64!!!".into();
-            let signed = SignedExtension { spec, signature: bundle };
+            let signed = SignedExtension {
+                spec,
+                signature: bundle,
+            };
             let err = verify(&signed, &Trustdb::new()).unwrap_err();
             assert!(matches!(err, VerificationError::Base64Decode { .. }));
         }
@@ -509,13 +543,32 @@ mod tests {
         #[test]
         fn sign_embeds_public_key_matching_signing_key() {
             let key = fresh_key();
-            let bundle = sign(&sample_spec(), &key);
+            let bundle = sign(&sample_spec(), &key).unwrap();
             use base64::Engine as _;
             let pub_bytes = base64::engine::general_purpose::STANDARD
                 .decode(&bundle.public_key)
                 .unwrap();
             assert_eq!(pub_bytes.len(), 32);
             assert_eq!(&pub_bytes[..], &key.verifying_key().to_bytes()[..]);
+        }
+
+        #[test]
+        fn signature_made_before_the_tameshi_migration_still_verifies() {
+            let signed = SignedExtension {
+                spec: sample_spec(),
+                signature: SignatureBundle {
+                    algorithm: "ed25519".into(),
+                    public_key: "6kpsY+KcUgq+9VB7Ey7F+ZVHdq6+vnuSQh7qaRRG0iw=".into(),
+                    signature: "kHHSgsXtKAGkmAH5H6+fsdcUCuwSlj0lfM2hlurYCQu/5eOyOYgnClAq6oK1KuixSX4Jaf9lhRhbTeJwSnhPCA==".into(),
+                    signed_by: None,
+                    signed_at: None,
+                },
+            };
+            assert!(matches!(
+                verify(&signed, &Trustdb::new()).unwrap(),
+                VerificationStatus::ValidButUntrusted { .. }
+            ));
+            assert_eq!(sign(&signed.spec, &fresh_key()).unwrap(), signed.signature);
         }
 
         #[test]
@@ -529,8 +582,11 @@ mod tests {
         fn signed_extension_roundtrips_through_json() {
             let key = fresh_key();
             let spec = sample_spec();
-            let bundle = sign(&spec, &key);
-            let signed = SignedExtension { spec, signature: bundle };
+            let bundle = sign(&spec, &key).unwrap();
+            let signed = SignedExtension {
+                spec,
+                signature: bundle,
+            };
             let json = serde_json::to_string(&signed).unwrap();
             let back: SignedExtension = serde_json::from_str(&json).unwrap();
             let mut trust = Trustdb::new();

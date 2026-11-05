@@ -209,9 +209,7 @@ impl DownloadRecord {
 }
 
 /// Compute the tameshi-shape content hash of a byte slice (BLAKE3,
-/// 128 bits → 26-char base32 lowercase). Same function as
-/// extension::signature::canonical_hash but reused here so download
-/// pipelines don't pull the signatures feature in.
+/// 128 bits → 26-char base32 lowercase).
 #[must_use]
 pub fn blake3_content_hash(bytes: &[u8]) -> String {
     let h = blake3::hash(bytes);

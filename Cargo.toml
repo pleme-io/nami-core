@@ -86,6 +86,7 @@ tracing = "0.1"
 thiserror = "2"
 # Content-addressable snapshots. Same BLAKE3 convention as tameshi.
 blake3 = "1.8"
+tameshi = { version = "0.1.10", default-features = false, features = ["content-address"] }
 # Optional regex support for (deffind) and future DSLs that want
 # pattern-matching against live page text.
 regex = "1"

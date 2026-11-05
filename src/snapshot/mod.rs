@@ -199,8 +199,7 @@ impl SnapshotRegistry {
 }
 
 /// Compute a sekiban-compatible BLAKE3 digest of captured bytes.
-/// Same hash shape as extension::signature::canonical_hash — 128
-/// bits → 26-char base32. Use this for snapshot-pinned attestation.
+/// 128 bits → 26-char base32. Use this for snapshot-pinned attestation.
 #[must_use]
 pub fn attest(bytes: &[u8]) -> String {
     let h = blake3::hash(bytes);

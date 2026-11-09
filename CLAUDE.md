@@ -27,7 +27,7 @@ crate tendril 0.4.3 — a foreign API path, owned by nobody here.`
 > whether it appears in a foreign trait signature; then build, because this
 > failure mode is a hard compile error and nothing subtler.
 
-> **★★★ CSE / Knowable Construction.** This repo operates under **Constructive Substrate Engineering** — canonical specification at [`pleme-io/theory/CONSTRUCTIVE-SUBSTRATE-ENGINEERING.md`](https://github.com/pleme-io/theory/blob/main/CONSTRUCTIVE-SUBSTRATE-ENGINEERING.md). The Compounding Directive (operational rules: solve once, load-bearing fixes only, idiom-first, models stay current, direction beats velocity) is in the org-level pleme-io/CLAUDE.md ★★★ section. Read both before non-trivial changes.
+> **★★★ CSE / Knowable Construction.** This repo operates under **Constructive Substrate Engineering**. The Compounding Directive (operational rules: solve once, load-bearing fixes only, idiom-first, models stay current, direction beats velocity) is in the org-level pleme-io/CLAUDE.md ★★★ section. Read it before non-trivial changes.
 
 
 Rendering-agnostic browser engine core shared by aranami (TUI/GPU browser) and
@@ -119,7 +119,7 @@ Consumer renders (garasu, Servo, terminal, headless...)
 | `content` | `mod.rs`, `blocker.rs` | ~340 | 6 | Ad/tracker blocking, EasyList-compatible filter lists, domain + pattern matching |
 | `storage` | `mod.rs`, `bookmarks.rs`, `history.rs` | ~827 | 17 | Bookmark CRUD with tags/folders, browsing history with visit counting and eviction |
 | `config.rs` | (single file) | ~281 | 5 | `BrowserConfig` (homepage, search engine, content blocking, privacy, network, storage) |
-| `engine` | `mod.rs` | ~330 | 28 | **The swappable web-content engine seam** — `BrowserEngine` trait + `ContentRect` + `EngineError` + `SubstrateNullEngine` + `MockEngine`. The owned abstraction every host (`namimado`/`aranami`) drives via `Box<dyn BrowserEngine>`; Servo/wry/null are values, not `#[cfg]` forests. See theory/BROWSER.md §XI. |
+| `engine` | `mod.rs` | ~330 | 28 | **The swappable web-content engine seam** — `BrowserEngine` trait + `ContentRect` + `EngineError` + `SubstrateNullEngine` + `MockEngine`. The owned abstraction every host (`namimado`/`aranami`) drives via `Box<dyn BrowserEngine>`; Servo/wry/null are values, not `#[cfg]` forests. |
 | `cdp` | `mod.rs` | ~290 | 11 | **CDP server dispatch** (Obscura absorption) — typed `CdpRequest`/`CdpOutcome` + `dispatch()` mapping CDP methods (`Page.navigate`/`Runtime.evaluate`/`Browser.getVersion`/`Target.getTargets`) onto a `BrowserEngine`. Pure protocol core; the WS transport is a thin host wrapper. |
 | `markdown` | `mod.rs` | ~470 | 14 | **DOM→Markdown** (Obscura `LP.getMarkdown` absorption) — a typed Markdown AST (`Block`/`Inline`) with `Display`-only emission (TYPED EMISSION) over the DOM walk. |
 | `blocker` | `mod.rs`, `trackers.txt` | ~430 | 24 | Tracker/ad blocking — **hayai-backed** RegexSet DFA URL matching (hayai's first fleet consumer) + an embedded ~120-domain seed list (`with_default_trackers()`) + DOM-strip via the selector engine. (Obscura blocklist absorption.) |

@@ -1,6 +1,6 @@
 //! The swappable web-content engine seam.
 //!
-//! BROWSER.md's "the trait seam IS the whole strategy", made real in code.
+//! The trait seam IS the whole strategy, made real in code.
 //! Every concrete content engine — Servo (the pure-Rust product engine), wry
 //! (the interim OS-WebView escape hatch), or the [`SubstrateNullEngine`]
 //! (no pixels, the substrate text render shows through) — implements this one
